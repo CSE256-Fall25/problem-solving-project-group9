@@ -1,6 +1,45 @@
-// ---- Define your dialogs  and panels here ----
+// ---- Define your dialogs and panels here ----
+let effective_permissions_panel = define_new_effective_permissions(
+    'effective_permissions_panel',
+    true
+);
+$('#sidepanel').append(effective_permissions_panel);
 
+let user_selector = define_new_user_select_field(
+    'user_select',
+    'Select the user',
+    function(selected_user) {
+        $('#effective_permissions_panel').attr('username', selected_user);
+    }
+);
+$('#sidepanel').append(user_selector);
 
+let new_dialog = define_new_dialog('info_dialog', 'Information/Details');
+$('.perm_info').click(
+    function() {
+        let name = $('#effective-permissions-panel').attr('username');
+        let path = $('#effective-permissions-panel').attr('filepath');
+        let permission = $(this).attr('permission_name');
+        console.log('Username:', name, 'Filepath:', path, 'Permission Type:', permission);
+
+        if (!name || !path) {
+            new_dialog.html('Select a user and file first.').dialog('Open');
+            return;
+        }
+  
+        let file_obj = path_to_file[path];
+        let user_obj = all_users[name];
+        console.log('File Object:', file_obj, 'User Object:', user_obj);
+  
+        let explanation_obj = allow_user_action(file_obj, user_obj, permission, true);
+        console.log('Explanation Object:', explanation_obj);
+  
+        let text = get_explanation_text(explanation_obj);
+        console.log('Explanation Text:', text);
+
+        new_dialog.html(text).dialog('Open');
+    }
+);
 
 // ---- Display file structure ----
 
