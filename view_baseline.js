@@ -7,8 +7,8 @@ show_starter_dialogs = false // set this to "false" to disable the survey and 3-
 // Make permissions dialog:
 perm_dialog = define_new_dialog('permdialog', title='Permissions', options = {
     // The following are standard jquery-ui options. See https://jqueryui.com/dialog/
-    height: 500,
-    width: 400,
+    height: 850,
+    width: 700,
     buttons: {
         OK:{
             text: "OK",
@@ -38,24 +38,44 @@ advanced_expl_div = $('<div id="permdialog_advanced_explantion_text">For special
 grouped_permissions = define_grouped_permission_checkboxes('permdialog_grouped_permissions')
 grouped_permissions.addClass('section') // add a 'section' class to the grouped_permissions element. This class adds a bit of spacing between this element and the next.
 
-// Make the list of users (empty for now - will get populated when we know the file):
-file_permission_users = define_single_select_list('permdialog_file_user_list', function(selected_user, e, ui){
-    // when a new user is selected, change username attribute of grouped permissions:
-    grouped_permissions.attr('username', selected_user)
-})
+// Make the list of users container (will use checkboxes instead of selectable)
+file_permission_users = $('<div id="permdialog_file_user_list" style="overflow-y:scroll; border: 1px solid #ddd; border-radius: 4px; padding: 8px;"></div>')
 file_permission_users.css({
-    'height':'80px',
+    'height':'150px',
 })
 
 // Make button to add a new user to the list:
-perm_add_user_select = define_new_user_select_field('perm_add_user', 'Add...', on_user_change = function(selected_user){
+perm_add_user_select = define_new_user_select_field('perm_add_user', 'Add New User', on_user_change = function(selected_user){
     // console.log("add...")
     let filepath = perm_dialog.attr('filepath')
     if(selected_user && (selected_user.length > 0) && (selected_user in all_users)) { // sanity check that a user is actually selected (and exists)
         let expected_user_elem_id = `permdialog_file_user_${selected_user}`
         if( file_permission_users.find(`#${expected_user_elem_id}`).length === 0 ) { // if such a user element doesn't already exist
-            new_user_elem = make_user_elem('permdialog_file_user', selected_user)
+            new_user_elem = make_user_elem('permdialog_file_user', selected_user, null, true)
             file_permission_users.append(new_user_elem)
+            
+            // Make entire row clickable to toggle checkbox
+            new_user_elem.click(function(e) {
+                if (e.target.type !== 'checkbox') {
+                    let checkbox = new_user_elem.find('input[type="checkbox"]')
+                    checkbox.prop('checked', !checkbox.prop('checked')).trigger('change')
+                }
+            })
+            
+            // Add change handler for checkbox
+            new_user_elem.find('input[type="checkbox"]').change(function() {
+                // Uncheck all other checkboxes (single selection)
+                file_permission_users.find('input[type="checkbox"]').not(this).prop('checked', false)
+                
+                if ($(this).prop('checked')) {
+                    grouped_permissions.attr('username', selected_user)
+                    file_permission_users.find('.perm_user_checkbox_row').removeClass('ui-selected')
+                    new_user_elem.addClass('ui-selected')
+                } else {
+                    grouped_permissions.attr('username', '')
+                    new_user_elem.removeClass('ui-selected')
+                }
+            })
         }
     }    
 })
@@ -80,7 +100,7 @@ cant_remove_dialog.html(`
 <div id="cant_remove_text">
     You can't remove <span id="cant_remove_username_1" class = "cant_remove_username"></span> because this object is inheriting permissions from 
     its parent. To remove <span id="cant_remove_username_2" class = "cant_remove_username"></span>, you must prevent this object from inheriting permissions.
-    Turn off the option for inheriting permissions, and then try removing <span id="cant_remove_username_3" class = "cant_remove_username"></span>  again.
+    Turn off the option for inheriting permissions in Advanced, and then try removing <span id="cant_remove_username_3" class = "cant_remove_username"></span>  again.
 </div>`)
 
 // Make a confirmation "are you sure you want to remove?" dialog
@@ -91,16 +111,22 @@ let are_you_sure_dialog = define_new_dialog('are_you_sure_dialog', "Are you sure
             text: "Yes",
             id: "are-you-sure-yes-button",
             click: function() {
-                // Which user and file were they trying to remove permissions for?
-                let username = file_permission_users.attr('selected_item')
+                // Get the currently checked user checkbox:
+                let selected_checkbox = file_permission_users.find('input[type="checkbox"]:checked')
+                if (selected_checkbox.length === 0) {
+                    $( this ).dialog( "close" );
+                    return
+                }
+                let selected_user_elem = selected_checkbox.closest('.perm_user_checkbox_row')
+                let username = selected_user_elem.attr('name')
                 let filepath = perm_dialog.attr('filepath')
 
                 // Remove all the permissions:
                 remove_all_perms_for_user(path_to_file[filepath], all_users[username]) 
 
                 // Update the UI to show that it's been removed:
-                file_permission_users.find('.ui-selected').remove()
-                file_permission_users.unselect() // clear user selection
+                file_permission_users.find(`#permdialog_file_user_${username}`).remove()
+                grouped_permissions.attr('username', '') // clear selection
 
                 // Finally, close this dialog:
                 $( this ).dialog( "close" );
@@ -120,13 +146,17 @@ let are_you_sure_dialog = define_new_dialog('are_you_sure_dialog', "Are you sure
 are_you_sure_dialog.text('Do you want to remove permissions for this user?')
 
 // Make actual "remove" button:
-perm_remove_user_button  = $('<button id="perm_remove_user" class="ui-button ui-widget ui-corner-all">Remove</button>')
+perm_remove_user_button  = $('<button id="perm_remove_user" class="ui-button ui-widget ui-corner-all remove-user" style="background-color: #dc3545; color: white; border-color: #dc3545;">Remove User</button>')
 perm_remove_user_button.click(function(){
-    // Get the current user and filename we are working with:
-    let selected_username = file_permission_users.attr('selected_item')
+    // Get the currently checked user checkbox:
+    let selected_checkbox = file_permission_users.find('input[type="checkbox"]:checked')
+    if (selected_checkbox.length === 0) {
+        return // no user selected
+    }
+    let selected_user_elem = selected_checkbox.closest('.perm_user_checkbox_row')
+    let selected_username = selected_user_elem.attr('name')
 
-    // Get the actual element that we want to remove from the user list:
-    let selected_user_elem = file_permission_users.find('.ui-selected') // find the element inside file_permission_users that has the special class ui-selected (given by jquery-ui selectable widget)
+    // Get whether user has inherited permissions:
     let has_inherited_permissions = selected_user_elem.attr('inherited')  === "true" // does it have inherited attribute set to "true"?
     
     // Check whether it's OK to remove it:
@@ -146,7 +176,7 @@ perm_remove_user_button.click(function(){
 
 // --- Append all the elements to the permissions dialog in the right order: --- 
 perm_dialog.append(obj_name_div)
-perm_dialog.append($('<div id="permissions_user_title">Group or user names:</div>'))
+perm_dialog.append($('<div id="permissions_user_title" style="font-weight: bold; font-size: 14px; margin-top: 15px; margin-bottom: 8px;">Select employee to change permissions for:</div>'))
 perm_dialog.append(file_permission_users)
 perm_dialog.append(perm_add_user_select)
 perm_add_user_select.append(perm_remove_user_button) // Cheating a bit again - add the remove button the the 'add user select' div, just so it shows up on the same line.
@@ -157,17 +187,58 @@ perm_dialog.append(advanced_expl_div)
 //Define an observer which will propagate perm_dialog's filepath attribute to all the relevant elements, whenever it changes:
 define_attribute_observer(perm_dialog, 'filepath', function(){
     let current_filepath = perm_dialog.attr('filepath')
+    // Save the currently selected username before resetting
+    let previous_selected_username = grouped_permissions.attr('username')
 
     grouped_permissions.attr('filepath', current_filepath) // set filepath for permission checkboxes
     $('#permdialog_objname_namespan').text(current_filepath) // set filepath for Object Name text
 
     // Generate element with all the file-specific users:
     file_users = get_file_users(path_to_file[current_filepath])
-    file_user_list = make_user_list('permdialog_file_user', file_users, add_attributes = true)
-    grouped_permissions.attr('username', '') // since we are reloading the user list, reset the username in permission checkboxes
-    //replace previous user list with the one we just generated:
+    // Create checkbox-based user list instead of selectable
     file_permission_users.empty()
-    file_permission_users.append(file_user_list)
+    for(let uname in file_users) {
+        let user_elem = make_user_elem('permdialog_file_user', uname, file_users[uname], true)
+        file_permission_users.append(user_elem)
+        
+        // Make entire row clickable to toggle checkbox
+        user_elem.click(function(e) {
+            if (e.target.type !== 'checkbox') {
+                let checkbox = user_elem.find('input[type="checkbox"]')
+                checkbox.prop('checked', !checkbox.prop('checked')).trigger('change')
+            }
+        })
+        
+        // Add change handler for checkbox
+        user_elem.find('input[type="checkbox"]').change(function() {
+            // Uncheck all other checkboxes (single selection)
+            file_permission_users.find('input[type="checkbox"]').not(this).prop('checked', false)
+            
+            if ($(this).prop('checked')) {
+                grouped_permissions.attr('username', uname)
+                // Visual feedback for selected user
+                file_permission_users.find('.perm_user_checkbox_row').removeClass('ui-selected')
+                user_elem.addClass('ui-selected')
+            } else {
+                grouped_permissions.attr('username', '')
+                user_elem.removeClass('ui-selected')
+            }
+        })
+    }
+    
+    // Restore the previously selected user if it still exists in the file users
+    if (previous_selected_username && previous_selected_username in file_users) {
+        // Find the checkbox for this user by ID and check it
+        let checkbox = $(`#permdialog_file_user_${previous_selected_username}_checkbox`)
+        if (checkbox.length > 0) {
+            checkbox.prop('checked', true)
+            // Trigger the change event to update grouped_permissions
+            checkbox.trigger('change')
+        }
+    } else {
+        // No previous selection or user no longer valid, reset
+        grouped_permissions.attr('username', '')
+    }
 })
 
 
@@ -210,7 +281,7 @@ function open_permission_entry(file_path) {
 
     $('#perm_entry_username').text('')
 
-    $('.perm_entry_checkcell').empty()
+    $('.perm_entry_permission_cell').empty()
 
     $(`#permentry`).dialog('open')
 }
@@ -255,12 +326,49 @@ function open_advanced_dialog(file_path) {
         }
     }
 
-    // user list for owner tab:
-    let all_user_list = make_all_users_list('adv_owner_','adv_owner_current_owner') 
-
+    // user list for owner tab - using checkbox style:
     $('#adv_owner_current_owner').text(get_user_name(file_obj.owner))
-
-    $('#adv_owner_user_list').append(all_user_list)
+    $('#adv_owner_user_list').empty()
+    
+    // Style the container
+    $('#adv_owner_user_list').css({
+        'overflow-y': 'scroll',
+        'border': '1px solid #ddd',
+        'border-radius': '4px',
+        'padding': '8px',
+        'height': '200px'
+    })
+    
+    // Populate with checkbox-based selection
+    for(let username in all_users) {
+        let user = all_users[username]
+        let user_elem = make_user_elem('adv_owner_', username, null, true)
+        $('#adv_owner_user_list').append(user_elem)
+        
+        // Make entire row clickable to toggle checkbox
+        user_elem.click(function(e) {
+            if (e.target.type !== 'checkbox') {
+                let checkbox = user_elem.find('input[type="checkbox"]')
+                checkbox.prop('checked', !checkbox.prop('checked')).trigger('change')
+            }
+        })
+        
+        // Single selection - when checked, update the owner attribute
+        user_elem.find('input[type="checkbox"]').change(function() {
+            if ($(this).prop('checked')) {
+                // Uncheck all other checkboxes
+                $('#adv_owner_user_list').find('input[type="checkbox"]').not(this).prop('checked', false)
+                // Visual feedback
+                $('#adv_owner_user_list').find('.perm_user_checkbox_row').removeClass('ui-selected')
+                user_elem.addClass('ui-selected')
+                // Update the current owner attribute
+                $('#adv_owner_current_owner').attr('username', username)
+            } else {
+                user_elem.removeClass('ui-selected')
+                $('#adv_owner_current_owner').attr('username', '')
+            }
+        })
+    }
 
     // open dialog:
     $(`#advdialog`).dialog('open')
@@ -290,13 +398,50 @@ function update_effective_user() {
     
 }
 
-// TODO: redo everything to use the new user_select_dialog
+// Function to populate user select container with checkbox-based selection
+function populate_user_select_container(container_id) {
+    $(`#${container_id}`).empty()
+    for(let uname in all_users) {
+        let user_elem = make_user_elem('user_select', uname, null, true)
+        $(`#${container_id}`).append(user_elem)
+        
+        // Make entire row clickable to toggle checkbox
+        user_elem.click(function(e) {
+            if (e.target.type !== 'checkbox') {
+                let checkbox = user_elem.find('input[type="checkbox"]')
+                checkbox.prop('checked', !checkbox.prop('checked')).trigger('change')
+            }
+        })
+        
+        // Single selection - uncheck others when this is checked
+        user_elem.find('input[type="checkbox"]').change(function() {
+            if ($(this).prop('checked')) {
+                // Uncheck all other checkboxes
+                $(`#${container_id}`).find('input[type="checkbox"]').not(this).prop('checked', false)
+                // Visual feedback for selected user
+                $(`#${container_id}`).find('.perm_user_checkbox_row').removeClass('ui-selected')
+                user_elem.addClass('ui-selected')
+                // Store selected username in dialog
+                $('#user_select_dialog').attr('username', uname)
+            } else {
+                user_elem.removeClass('ui-selected')
+                $('#user_select_dialog').attr('username', '')
+            }
+        })
+    }
+}
+
+// Updated function to use checkbox style selection
 function open_user_select(to_populate) {
     $('#user_select_dialog').attr('to_populate', to_populate)
-
-    $('#user_select_container').empty()
-    user_select_list = make_all_users_list('user_select', 'user_select_dialog', 200)
-    $('#user_select_container').append(user_select_list)
+    
+    // Reset selection
+    $('#user_select_container').find('input[type="checkbox"]').prop('checked', false)
+    $('#user_select_container').find('.perm_user_checkbox_row').removeClass('ui-selected')
+    $('#user_select_dialog').attr('username', '')
+    
+    // Populate with checkbox-based list
+    populate_user_select_container('user_select_container')
 
     $(`#user_select_dialog`).dialog('open')
 }
@@ -318,8 +463,8 @@ $( "#advtabs" ).tabs({
 });
 let adv_contents = $(`#advdialog`).dialog({
     position: { my: "top", at: "top", of: $('#html-loc') },
-    width: 700,
-    height: 450,
+    width: 850,
+    height: 650,
     modal: true,
     autoOpen: false,
     appendTo: "#html-loc",
@@ -469,7 +614,7 @@ $('#adv_owner_change_button').click(function() {
 
 
 
-// User dialog 
+// User dialog - updated to use checkbox style
 let user_select_contents = $("#user_select_dialog").dialog({
     height: 450,
     width: 400,
@@ -491,14 +636,45 @@ let user_select_contents = $("#user_select_dialog").dialog({
             click: function() {
                 // populate field with user name (assume these are stored in attributes)
                 let to_populate_id = $(this).attr('to_populate')
-                let selected_value = $(this).attr('username')
-                $(`#${to_populate_id}`).text(selected_value)
-                $(`#${to_populate_id}`).attr('selected_user', selected_value)
+                let selected_value = $(this).attr('username') || ''
+                
+                // If no username in attribute, try to get from checked checkbox
+                if (!selected_value) {
+                    let selected_checkbox = $('#user_select_container').find('input[type="checkbox"]:checked')
+                    if (selected_checkbox.length > 0) {
+                        let selected_user_elem = selected_checkbox.closest('.perm_user_checkbox_row')
+                        selected_value = selected_user_elem.attr('name')
+                    }
+                }
+                
+                if (selected_value) {
+                    $(`#${to_populate_id}`).text(selected_value)
+                    $(`#${to_populate_id}`).attr('selected_user', selected_value)
+                }
                 $( this ).dialog( "close" );
             }
         }
       }
 })
+
+// Style the user select container to match checkbox style (when it exists)
+if ($('#user_select_container').length > 0) {
+    $('#user_select_container').css({
+        'overflow-y': 'scroll',
+        'border': '1px solid #ddd',
+        'border-radius': '4px',
+        'padding': '8px',
+        'height': '250px'
+    })
+}
+
+// Also add a header to the dialog if the container exists
+if ($('#user_select_dialog').length > 0 && $('#user_select_container').length > 0) {
+    // Check if header doesn't already exist
+    if ($('#user_select_dialog').find('.user_select_header').length === 0) {
+        $('#user_select_container').before($('<div class="user_select_header" style="margin-bottom: 10px; font-weight: bold;">Select a user:</div>'))
+    }
+}
 
 
 
@@ -514,7 +690,8 @@ let perm_entry_dialog = $('#permentry').dialog({
             text: "OK",
             id: "permission-entry-ok-button",
             click: function() {
-                open_advanced_dialog($('#advdialog').attr('filepath') )// redo advanced dialog (recalc permissions)
+                let filepath = $('#advdialog').attr('filepath') // Get current filepath
+                open_advanced_dialog(filepath) // redo advanced dialog (recalc permissions)
                 perm_dialog.attr('filepath', filepath) // reload contents of permissions dialog
                 $( this ).dialog( "close" );
             }
@@ -523,12 +700,11 @@ let perm_entry_dialog = $('#permentry').dialog({
 })
 
 for(let p of Object.values(permissions)){
-    let row = $(`<tr id="perm_entry_row_${p}">
-        <td id="perm_entry_row_${p}_cell">${p}</td>
+    let p_id = p.replace(/[ \/]/g, '_')
+    let row = $(`<tr id="perm_entry_row_${p_id}">
+        <td id="perm_entry_row_${p_id}_cell">${p}</td>
+        <td id="perm_entry_row_${p_id}_permission_cell" class="perm_entry_permission_cell" perm="${p}" style="text-align: center;"></td>
     </tr>`)
-    for(let ace_type of ['allow', 'deny']) {
-        row.append(`<td id="perm_entry_row_${p}_${ace_type}" class="perm_entry_checkcell" perm="${p}" type="${ace_type}"></td>`)
-    }
     $('#perm_entry_table').append(row)
 }  
 
@@ -550,31 +726,93 @@ perm_entry_user_observer = new MutationObserver(function(mutationsList, observer
                 let filepath = $('#advdialog').attr('filepath') // TODO: maybe set and use own filepath in this dialog.
                 let file_obj = path_to_file[filepath]
                 
-                // get rid of previous checkboxes:
-                $('.perm_entry_checkcell').empty()
-                // by default, put unchecked checkboxes everywhere:
-                $('.perm_entry_checkcell').each(function(i){
-                    let cell_id = $(this).attr('id')
-                    let checkbox = $(`<input type="checkbox" id="${cell_id}_checkbox" class="perm_entry_checkbox"></input>`)
-                    $(this).append(checkbox)
+                // get rid of previous toggles:
+                $('.perm_entry_permission_cell').empty()
+                
+                // Create toggle switches for each permission
+                $('.perm_entry_permission_cell').each(function(){
+                    let permission = $(this).attr('perm')
+                    let p_id = permission.replace(/[ \/]/g, '_')
+                    let cell = $(this)
+                    
+                    let toggle_html = `
+                        <div class="perm_toggle_container" style="display: inline-flex; align-items: center;">
+                            <span class="perm_toggle_label" style="margin-right: 8px; font-size: 12px; color: #666;">Deny</span>
+                            <label class="perm_toggle_switch" id="perm_entry_${p_id}_toggle_switch" permission="${permission}">
+                                <input type="checkbox" id="perm_entry_${p_id}_toggle" class="perm_entry_checkbox_toggle" permission="${permission}">
+                                <span class="perm_toggle_slider"></span>
+                            </label>
+                            <span class="perm_toggle_label" style="margin-left: 8px; font-size: 12px; color: #666;">Allow</span>
+                        </div>
+                    `
+                    cell.append(toggle_html)
                 })
 
-                let all_perms = get_total_permissions(file_obj,$('#perm_entry_username').attr('selected_user'))
-                for(let ace_type in all_perms) {
-                    for(let p in all_perms[ace_type]) {
-                        let checkbox = $(document.getElementById(`perm_entry_row_${p}_${ace_type}_checkbox`))
-                        checkbox.prop('checked', true)
-                        if(all_perms[ace_type][p].inherited) {
-                            // can't uncheck inherited permissions.
-                            checkbox.prop('disabled', true)
+                let all_perms = get_total_permissions(file_obj, $('#perm_entry_username').attr('selected_user'))
+                
+                // Set toggle states based on permissions
+                for(let p of Object.values(permissions)) {
+                    let p_id = p.replace(/[ \/]/g, '_')
+                    let toggle_checkbox = $(`#perm_entry_${p_id}_toggle`)
+                    let has_allow = all_perms.allow[p] && all_perms.allow[p].set
+                    let has_deny = all_perms.deny[p] && all_perms.deny[p].set
+                    
+                    if (has_allow) {
+                        // Allow = checked (right side)
+                        toggle_checkbox.prop('checked', true)
+                        if (all_perms.allow[p].inherited) {
+                            toggle_checkbox.prop('disabled', true)
+                        }
+                    } else if (has_deny) {
+                        // Deny = unchecked (left side, default)
+                        toggle_checkbox.prop('checked', false)
+                        if (all_perms.deny[p].inherited) {
+                            toggle_checkbox.prop('disabled', true)
+                        }
+                    } else {
+                        // No explicit permissions - check parent if using inheritance
+                        if (filepath && filepath in path_to_file) {
+                            let file_obj = path_to_file[filepath]
+                            if (file_obj.using_permission_inheritance && file_obj.parent !== null) {
+                                let parent_perms = get_total_permissions(file_obj.parent, $('#perm_entry_username').attr('selected_user'))
+                                let parent_has_allow = parent_perms.allow[p] && parent_perms.allow[p].set
+                                let parent_has_deny = parent_perms.deny[p] && parent_perms.deny[p].set
+                                
+                                if (parent_has_allow) {
+                                    // Parent has Allow - show as Allow (inherited, so disabled)
+                                    toggle_checkbox.prop('checked', true)
+                                    toggle_checkbox.prop('disabled', true)
+                                } else if (parent_has_deny) {
+                                    // Parent has Deny - show as Deny (inherited, so disabled)
+                                    toggle_checkbox.prop('checked', false)
+                                    toggle_checkbox.prop('disabled', true)
+                                } else {
+                                    // Parent also has nothing - default to Deny
+                                    toggle_checkbox.prop('checked', false)
+                                }
+                            } else {
+                                // No inheritance - default to Deny
+                                toggle_checkbox.prop('checked', false)
+                            }
+                        } else {
+                            // No file object - default to Deny
+                            toggle_checkbox.prop('checked', false)
                         }
                     }
                 }
 
-                $('.perm_entry_checkbox').change(function(){
-                    let username =  $('#perm_entry_username').attr('selected_user')
-                    let filepath =  $(`#advdialog`).attr('filepath')
-                    toggle_permission(filepath, username, $(this).parent().attr('perm'), $(this).parent().attr('type'), $(this).prop('checked'))
+                $('.perm_entry_checkbox_toggle').change(function(){
+                    let username = $('#perm_entry_username').attr('selected_user')
+                    let filepath = $('#advdialog').attr('filepath')
+                    let permission = $(this).attr('permission')
+                    let is_checked = $(this).prop('checked') // checked = Allow, unchecked = Deny
+                    
+                    // Remove opposite type first, then add selected type
+                    let selected_type = is_checked ? 'allow' : 'deny'
+                    let opposite_type = is_checked ? 'deny' : 'allow'
+                    
+                    toggle_permission(filepath, username, permission, opposite_type, false)
+                    toggle_permission(filepath, username, permission, selected_type, true)
                 })
             }
         }
