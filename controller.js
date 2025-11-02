@@ -290,17 +290,23 @@ function get_grouped_permissions(file_obj, username) {
             // if any of the permission listed in that group are not listed in the total permissions, then we will not check the checkbox for that group.
             let should_check = true;
             let has_inherited = false;
+            let has_explicit = false;
+
             for (let perm of permission_groups[groupname]) {
                 if (!total_permissions[ace_type][perm]) {
                     should_check = false;
-                } else if (total_permissions[ace_type][perm].inherited) {
-                    has_inherited = true;
+                } else {
+                    if (total_permissions[ace_type][perm].inherited) {
+                        has_inherited = true;
+                    } else {
+                        has_explicit = true;
+                    }
                 }
             }
             if (should_check) {
                 grouped_permissions[ace_type][groupname] = {
                     set: true,
-                    inherited: has_inherited,
+                    inherited: has_inherited && !has_explicit,
                 };
                 // if we've checked the box, mark each permission in this group as "used" for some permission group - if there are any "unused" permissions, then we will check "special permissions"
                 for (let perm of permission_groups[groupname]) {
