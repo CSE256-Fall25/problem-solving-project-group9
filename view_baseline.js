@@ -499,18 +499,19 @@ $('#adv_perm_inheritance').change(function(){
     else {
         // has just been turned off - pop up dialog with add/remove/cancel
         $(`<div id="add_remove_cancel" title="Security">
-            Warning: if you proceed, inheritable permissions will no longer propagate to this object.<br/>
-            - Click Add to convert and add inherited parent permissions as explicit permissions on this object<br/>
-            - Click Remove to remove inherited parent permissions from this object<br/>
-            - Click Cancel if you do not want to modify inheritance settings at this time.<br/>
+            <p style="font-weight: bold; color: #d9534f; margin-bottom: 15px;">Warning: if you proceed, inheritable permissions will no longer propagate to this object.</p>
+            <p style="margin-bottom: 10px;">To stop inheriting permissions from the parent, you have two options:</p>
+            <p style="margin-bottom: 10px;">- Click <strong>Convert</strong> to convert the inherited permissions into explicit permissions on this object. The permissions will remain the same, but they will no longer be inherited, and <strong>each employee's permissions can be removed or modified independently.</strong></p>
+            <p style="margin-bottom: 10px;">- Click <strong>Discard All</strong> to stop inheriting permissions and remove all inherited permissions from this object. This will <strong>remove all permissions</strong> that were previously inherited <strong>for all users.</strong></p>
+            <p style="margin-bottom: 10px;">- Click <strong>Cancel</strong> if you do not want to modify inheritance settings at this time.</p>
         </div>`).dialog({ // TODO: don't create this dialog on the fly
             modal: true,
-            width: 400,
+            width: 450,
             appendTo: "#html-loc",
             position: { my: "top", at: "top", of: $('#html-loc') },
             buttons: {
-                Add: {
-                    text: "Add",
+                Convert: {
+                    text: "Convert",
                     id: "adv-inheritance-add-button",
                     click: function() {
                         let filepath = $('#advdialog').attr('filepath')
@@ -521,8 +522,8 @@ $('#adv_perm_inheritance').change(function(){
                         $( this ).dialog( "close" );
                     },
                 },
-                Remove: {
-                    text: "Remove",
+                "Discard All": {
+                    text: "Discard All",
                     id: "adv-inheritance-remove-button",
                     click: function() {
                         let filepath = $('#advdialog').attr('filepath')
