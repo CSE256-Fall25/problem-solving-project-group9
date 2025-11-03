@@ -318,6 +318,41 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
                 }
             }
             
+            // Check if there are any disabled toggles (inherited permissions) and show help
+            let has_disabled_toggles = false
+            group_table.find('.perm_toggle_checkbox').each(function() {
+                let checkbox = $(this)
+                let row_id = checkbox.closest('tr').attr('id')
+                // Check if disabled and not Special_Permissions
+                if (checkbox.prop('disabled') && row_id !== `${id_prefix}_row_Special_Permissions`) {
+                    has_disabled_toggles = true
+                    return false // break out of each loop
+                }
+            })
+            
+            // Show/hide inheritance help message in permissions dialog
+            let help_msg = $(`#${id_prefix}_inheritance_help`)
+            if (has_disabled_toggles && help_msg.length === 0 && id_prefix === 'permdialog_grouped_permissions') {
+                // Add help message above the permissions table for main dialog only
+                let help_msg_div = $(`
+                    <div id="${id_prefix}_inheritance_help" style="background-color: #e7f3ff; border: 1px solid #0066cc; border-radius: 4px; padding: 10px; margin: 10px 0 15px 0; font-size: 0.9em; font-family: Arial, sans-serif;">
+                        <strong style="color: #0066cc;">ℹ Some Permissions are Disabled (Grayed Out)</strong>
+                        <p>
+                            This means they are inherited from the parent folder and cannot be changed here. To modify these permissions, 
+                            click <strong>Advanced</strong>, uncheck "Include inheritable permissions from this object's parent", then 
+                            click <strong>Convert</strong>. This will convert the inherited permissions to explicit permissions that can be 
+                            changed here.
+                        </p>
+                    </div>
+                `)
+                // Insert directly before the grouped_permissions table in the dialog
+                // group_table is the table element itself, which is directly in perm_dialog
+                group_table.before(help_msg_div)
+            } else if (!has_disabled_toggles && help_msg.length > 0) {
+                // Remove help message if no disabled toggles
+                help_msg.remove()
+            }
+            
             // Check if all permissions are Deny and highlight remove button if so
             // check_and_highlight_remove_button(group_table, grouped_perms, which_groups)
         }

@@ -32,6 +32,10 @@
                 But now, some of the files are inaccessible to either the students or the instructors. Find and fix the
                 problem.
             </p>
+            <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 10px; margin: 10px 0;">
+                <strong>Tip:</strong> Check the inheritance status of each file. Look for files with a <span style="color: #dc3545;">⚠ warning icon</span> - these files are not inheriting permissions and may be inaccessible. 
+                In Advanced Security Settings, ensure the "Include inheritable permissions from this object's parent" checkbox is checked for files that should inherit from <code>Lecture_Notes</code>.
+            </div>
             <br />
             <form action="https://www.mturk.com/mturk/externalSubmit" id="mturk-submit-form" method="POST">
                 <input id="assignment-id" name="assignmentId" type="hidden" />
@@ -117,7 +121,10 @@
                         <div id="adv_permissions_tab">
                             <div id="adv_perm_object_name" class="section">Object Name: <span
                                     id="adv_perm_filepath"></span></div>
-                            <div id="adv_perm_entries_text">Permission Entries:</div>
+                            <div id="adv_perm_inheritance_status" style="margin: 8px 0; padding: 6px; background-color: #f8f9fa; border-radius: 4px; font-size: 0.9em;">
+                                <span id="adv_perm_inheritance_status_text"></span>
+                            </div>
+                            <div id="adv_perm_entries_text"><strong>Permission Entries:</strong></div>
                             <div id="adv_perm_table_container" style="height:100px;overflow-y:scroll"
                                 class="ui-widget-content section">
                                 <table id="adv_perm_table" width="100%">
