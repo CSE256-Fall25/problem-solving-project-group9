@@ -269,8 +269,11 @@ function open_advanced_dialog(file_path, from_cant_remove_error = false) {
     // Show/hide warning banner based on whether opened from "can't remove" error
     if (from_cant_remove_error) {
         $('#adv_perm_warning_banner').show();
+        // Store flag for use in inheritance dialog
+        $('#advdialog').data('from_cant_remove_error', true);
     } else {
         $('#adv_perm_warning_banner').hide();
+        $('#advdialog').data('from_cant_remove_error', false);
     }
 
     // clear dynamic content:
@@ -409,20 +412,51 @@ $('#adv_perm_inheritance').change(function(){
     }
     else {
         // has just been turned off - pop up dialog with add/remove/cancel
-        $(`<div id="add_remove_cancel" title="Security">
-            Warning: if you proceed, inheritable permissions will no longer propagate to this object.<br/>
-            - Click Add to convert and add inherited parent permissions as explicit permissions on this object<br/>
-            - Click Remove to remove inherited parent permissions from this object<br/>
-            - Click Cancel if you do not want to modify inheritance settings at this time.<br/>
-        </div>`).dialog({ // TODO: don't create this dialog on the fly
+        // Check if this is the remove_user_with_inheritance scenario for custom messaging
+        let current_scenario = $('#scenario_context').data('tag');
+        let is_remove_user_scenario = current_scenario === 'remove_user_with_inheritance';
+        let from_cant_remove = $('#advdialog').data('from_cant_remove_error') || false;
+        
+        let dialog_content = '';
+        if (is_remove_user_scenario && from_cant_remove) {
+            // Scenario-specific messaging for remove_user_with_inheritance
+            dialog_content = `
+                <div style="margin-bottom: 12px;">
+                    <strong>⚠️ To remove a user, you need to convert inherited permissions first.</strong>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    This file is currently inheriting permissions from its parent folder. To remove a user, you must first convert those inherited permissions into explicit permissions on this file.
+                </div>
+                <div style="background-color: #e7f3ff; border-left: 4px solid #0066cc; padding: 10px; margin: 12px 0;">
+                    <strong style="color: #0066cc;">✓ Recommended: Click "Convert & Add"</strong><br/>
+                    This converts inherited permissions to explicit permissions, allowing you to remove the user you selected.
+                </div>
+                <div style="color: #666; font-size: 0.9em; margin-top: 12px;">
+                    <strong>Other options:</strong><br/>
+                    • <strong>Remove</strong>: Removes inherited permissions without converting (won't help you remove the user)<br/>
+                    • <strong>Cancel</strong>: Keep inheritance settings as they are
+                </div>
+            `;
+        } else {
+            // Default messaging
+            dialog_content = `
+                Warning: if you proceed, inheritable permissions will no longer propagate to this object.<br/><br/>
+                - Click <strong>Add</strong> to convert and add inherited parent permissions as explicit permissions on this object<br/>
+                - Click <strong>Remove</strong> to remove inherited parent permissions from this object<br/>
+                - Click <strong>Cancel</strong> if you do not want to modify inheritance settings at this time.
+            `;
+        }
+        
+        $(`<div id="add_remove_cancel" title="Security">${dialog_content}</div>`).dialog({ // TODO: don't create this dialog on the fly
             modal: true,
-            width: 400,
+            width: is_remove_user_scenario && from_cant_remove ? 500 : 400,
             appendTo: "#html-loc",
             position: { my: "top", at: "top", of: $('#html-loc') },
             buttons: {
-                Add: {
-                    text: "Add",
+                "Convert & Add": {
+                    text: is_remove_user_scenario && from_cant_remove ? "Convert & Add ✓" : "Add",
                     id: "adv-inheritance-add-button",
+                    class: is_remove_user_scenario && from_cant_remove ? "ui-button-primary" : "",
                     click: function() {
                         let filepath = $('#advdialog').attr('filepath')
                         let file_obj = path_to_file[filepath]
@@ -455,6 +489,17 @@ $('#adv_perm_inheritance').change(function(){
                 },
             }
         })
+        
+        // Make "Convert & Add" button primary (blue/prominent) for remove_user scenario
+        if (is_remove_user_scenario && from_cant_remove) {
+            setTimeout(function() {
+                $('#adv-inheritance-add-button').addClass('ui-button-primary').css({
+                    'font-weight': 'bold',
+                    'background-color': '#0066cc',
+                    'color': 'white'
+                });
+            }, 10);
+        }
     }
 })
 
