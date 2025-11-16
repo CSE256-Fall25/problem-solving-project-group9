@@ -74,6 +74,32 @@ input.groupcheckbox[ptype="deny"]:checked {
     font-size: 12px;
 }
 
+.perm-warning-text {
+    color: #ec971f;
+    font-weight: 600;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+.user-membership-badge {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background-color: #337ab7;
+    font-size: 11px;
+    color: #ffffff;
+}
+
+.group-students-label {
+    color: #337ab7;
+    font-weight: 600;
+}
+
+/* When the students group row is selected, keep its label readable on the blue selection background */
+.ui-selected .group-students-label {
+    color: #ffffff;
+}
+
 
 #mturk-top-banner-drop-down-content {
     position: absolute;

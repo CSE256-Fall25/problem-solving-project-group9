@@ -32,10 +32,18 @@ function define_attribute_observer(watched_elem_selector, watched_attribute, on_
 // The element automatically creates an icon which varies based on whether it's a singular user or a group, 
 // and also adds any attributes you pass along
 function make_user_elem(id_prefix, uname, user_attributes=null) {
+    // Add a special class to the "students" group so its icon and label can be styled consistently
+    let group_students_class = (uname === 'students') ? 'group-students-label' : '';
+
     user_elem = $(`<div class="ui-widget-content" id="${id_prefix}_${uname}" name="${uname}">
-        <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'}"/> 
-        <span id="${id_prefix}_${uname}_text">${uname} </span>
+        <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'} ${group_students_class}"></span> 
+        <span id="${id_prefix}_${uname}_text" class="${group_students_class}">${uname}</span>
     </div>`)
+
+    // Scenario-specific badge: indicate that teaching_assistant is a member of the "students" group
+    if (uname === 'teaching_assistant') {
+        user_elem.append(`<span class="user-membership-badge">member of: "students"</span>`)
+    }
 
     if (user_attributes) {
         // if we need to add the user's attributes: go through the properties for that user and add each as an attribute to user_elem.
@@ -216,6 +224,11 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
             <th id="${id_prefix}_header_allow">Allow</th>
             <th id="${id_prefix}_header_deny">Deny</th>
         </tr>
+        <tr id="${id_prefix}_warning_row" style="display:none;">
+            <td colspan="3" class="perm-warning-text">
+                ⚠️ WARNING: if permissions are denied for the "students" group, they will also be denied for the group member "teaching_assistant."
+            </td>
+        </tr>
     </table>
     `)
 
@@ -292,6 +305,15 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
 
                 }
             } 
+
+            // After checkboxes reflect current permissions, show or hide the scenario-specific warning for let_ta_modify:
+            let warning_row = group_table.find(`#${id_prefix}_warning_row`)
+            if (username === 'teaching_assistant'
+                && filepath === '/C/Lecture_Notes/Lecture4.txt') {
+                warning_row.show()
+            } else {
+                warning_row.hide()
+            }
         }
         else {
             // can't get permissions for this username/filepath - reset everything into a blank state
