@@ -33,7 +33,9 @@ function define_attribute_observer(watched_elem_selector, watched_attribute, on_
 // and also adds any attributes you pass along
 function make_user_elem(id_prefix, uname, user_attributes=null) {
     // Add a special class to the "students" group so its icon and label can be styled consistently
-    let group_students_class = (uname === 'students') ? 'group-students-label' : '';
+    // But don't apply styling for let_ta_modify scenario (revert to original black unbolded format)
+    let current_scenario = $('#scenario_context').data('tag');
+    let group_students_class = (uname === 'students' && current_scenario !== 'let_ta_modify') ? 'group-students-label' : '';
 
     user_elem = $(`<div class="ui-widget-content" id="${id_prefix}_${uname}" name="${uname}">
         <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'} ${group_students_class}"></span> 
@@ -224,9 +226,14 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
             <th id="${id_prefix}_header_allow">Allow</th>
             <th id="${id_prefix}_header_deny">Deny</th>
         </tr>
-        <tr id="${id_prefix}_warning_row" style="display:none;">
+        <tr id="${id_prefix}_warning_row_teaching_assistant" style="display:none;">
             <td colspan="3" class="perm-warning-text">
                 ⚠️ WARNING: if permissions are denied for the "students" group, they will also be denied for the group member "teaching_assistant."
+            </td>
+        </tr>
+        <tr id="${id_prefix}_warning_row_students" style="display:none;">
+            <td colspan="3" class="perm-warning-text">
+                ⚠️ WARNING: denying permissions for "students" will override and deny for "teaching_assistant"
             </td>
         </tr>
     </table>
@@ -306,6 +313,22 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
             for( ace_type in grouped_perms) { // 'allow' and 'deny'
                 for(allowed_group in grouped_perms[ace_type]) {
                     let checkbox = group_table.find(`#${id_prefix}_${allowed_group}_${ace_type}_checkbox`)
+                    
+                    // Special case: if Write should appear unchecked (because Modify is checked),
+                    // don't check the Write checkbox even though permissions exist
+                    if (allowed_group === 'Write') {
+                        let file_obj = path_to_file[filepath];
+                        if (file_obj._write_unchecked_flags && 
+                            file_obj._write_unchecked_flags[username] && 
+                            file_obj._write_unchecked_flags[username][ace_type]) {
+                            checkbox.prop('checked', false);
+                            if(grouped_perms[ace_type][allowed_group].inherited) {
+                                checkbox.prop('disabled', true)
+                            }
+                            continue; // Skip setting this checkbox to checked
+                        }
+                    }
+                    
                     checkbox.prop('checked', true)
                     if(grouped_perms[ace_type][allowed_group].inherited) {
                         // can't uncheck inherited permissions.
@@ -316,12 +339,23 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
             } 
 
             // After checkboxes reflect current permissions, show or hide the scenario-specific warning for let_ta_modify:
-            let warning_row = group_table.find(`#${id_prefix}_warning_row`)
-            if (username === 'teaching_assistant'
-                && filepath === '/C/Lecture_Notes/Lecture4.txt') {
-                warning_row.show()
+            let warning_row_ta = group_table.find(`#${id_prefix}_warning_row_teaching_assistant`)
+            let warning_row_students = group_table.find(`#${id_prefix}_warning_row_students`)
+            
+            if (filepath === '/C/Lecture_Notes/Lecture4.txt') {
+                if (username === 'teaching_assistant') {
+                    warning_row_ta.show()
+                    warning_row_students.hide()
+                } else if (username === 'students') {
+                    warning_row_ta.hide()
+                    warning_row_students.show()
+                } else {
+                    warning_row_ta.hide()
+                    warning_row_students.hide()
+                }
             } else {
-                warning_row.hide()
+                warning_row_ta.hide()
+                warning_row_students.hide()
             }
         }
         else {
@@ -336,10 +370,91 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
     define_attribute_observer(group_table, 'filepath', update_group_checkboxes)
 
     //Update permissions when checkbox is clicked:
-    group_table.find('.groupcheckbox').change(function(){
-        toggle_permission_group( group_table.attr('filepath'), group_table.attr('username'), $(this).attr('group'), $(this).attr('ptype'), $(this).prop('checked'))
+    let checkboxChangeHandler = function(){
+        let group = $(this).attr('group');
+        let ptype = $(this).attr('ptype');
+        let is_checked = $(this).prop('checked');
+        let filepath = group_table.attr('filepath');
+        let username = group_table.attr('username');
+        
+        // Special handling for Write/Modify relationship:
+        // - Modify controls Write: when Modify is checked/unchecked, also check/uncheck Write
+        // - Write does NOT control Modify: Write can be checked/unchecked independently
+        // - If unchecking Write while Modify is checked, store a flag so Write appears unchecked
+        //   but permissions remain (since Modify needs them)
+        
+        if (group === 'Modify') {
+            // Modify controls Write - sync Write checkbox and permissions
+            let write_checkbox = group_table.find(`#${id_prefix}_Write_${ptype}_checkbox`);
+            let file_obj = path_to_file[filepath];
+            
+            if (is_checked) {
+                // When checking Modify, also check Write
+                if (!write_checkbox.prop('checked')) {
+                    write_checkbox.off('change', checkboxChangeHandler);
+                    write_checkbox.prop('checked', true);
+                    toggle_permission_group(filepath, username, 'Write', ptype, true);
+                    write_checkbox.on('change', checkboxChangeHandler);
+                }
+                // Clear any unchecked flag since we're checking both
+                if (file_obj._write_unchecked_flags && file_obj._write_unchecked_flags[username]) {
+                    delete file_obj._write_unchecked_flags[username][ptype];
+                }
+            } else {
+                // When unchecking Modify, also uncheck Write
+                if (write_checkbox.prop('checked')) {
+                    write_checkbox.off('change', checkboxChangeHandler);
+                    write_checkbox.prop('checked', false);
+                    toggle_permission_group(filepath, username, 'Write', ptype, false);
+                    write_checkbox.on('change', checkboxChangeHandler);
+                }
+                // Clear any unchecked flag since we're removing permissions
+                if (file_obj._write_unchecked_flags && file_obj._write_unchecked_flags[username]) {
+                    delete file_obj._write_unchecked_flags[username][ptype];
+                }
+            }
+        }
+        
+        if (group === 'Write' && !is_checked) {
+            // Check if Modify is currently checked for the same type
+            let modify_checkbox = group_table.find(`#${id_prefix}_Modify_${ptype}_checkbox`);
+            if (modify_checkbox.prop('checked')) {
+                // Modify is still checked, so we should NOT remove Write permissions
+                // Store a flag that Write should appear unchecked even though permissions exist
+                let file_obj = path_to_file[filepath];
+                if (!file_obj._write_unchecked_flags) {
+                    file_obj._write_unchecked_flags = {};
+                }
+                if (!file_obj._write_unchecked_flags[username]) {
+                    file_obj._write_unchecked_flags[username] = {};
+                }
+                file_obj._write_unchecked_flags[username][ptype] = true;
+                // Don't toggle the permissions, just update the UI
+                update_group_checkboxes();
+                return; // Don't proceed with the toggle
+            } else {
+                // Modify is not checked, so we can safely remove Write permissions
+                // Clear any flag if it exists
+                let file_obj = path_to_file[filepath];
+                if (file_obj._write_unchecked_flags && file_obj._write_unchecked_flags[username]) {
+                    delete file_obj._write_unchecked_flags[username][ptype];
+                }
+            }
+        }
+        
+        if (group === 'Write' && is_checked) {
+            // When checking Write, clear any unchecked flag
+            let file_obj = path_to_file[filepath];
+            if (file_obj._write_unchecked_flags && file_obj._write_unchecked_flags[username]) {
+                delete file_obj._write_unchecked_flags[username][ptype];
+            }
+        }
+        
+        toggle_permission_group(filepath, username, group, ptype, is_checked);
         update_group_checkboxes()// reload checkboxes
-    })
+    };
+    
+    group_table.find('.groupcheckbox').on('change', checkboxChangeHandler);
 
     return group_table
 }
