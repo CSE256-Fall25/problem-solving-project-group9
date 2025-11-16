@@ -66,21 +66,36 @@ perm_add_user_select.find('span').hide()// Cheating a bit - just show the button
 
 // Make a dialog which shows up when they're not allowed to remove that user from that file (because of inheritance)
 cant_remove_dialog = define_new_dialog('cant_remove_inherited_dialog', 'Security', {
+    width: 500,
     buttons: {
-        OK: {
-            text: "OK",
-            id: "cant-remove-ok-button",
+        Cancel: {
+            text: "Cancel",
+            id: "cant-remove-cancel-button",
             click: function() {
                 $( this ).dialog( "close" );
+            }
+        },
+        "Open Advanced Settings": {
+            text: "Open Advanced Settings →",
+            id: "cant-remove-open-advanced-button",
+            click: function() {
+                // Get the filepath from the permissions dialog
+                let filepath = perm_dialog.attr('filepath')
+                // Close this dialog
+                $( this ).dialog( "close" );
+                // Open the Advanced dialog with flag indicating it's from the "can't remove" error
+                open_advanced_dialog(filepath, true)
             }
         }
     }
 })
 cant_remove_dialog.html(`
 <div id="cant_remove_text">
-    You can't remove <span id="cant_remove_username_1" class = "cant_remove_username"></span> because this object is inheriting permissions from 
-    its parent. To remove <span id="cant_remove_username_2" class = "cant_remove_username"></span>, you must prevent this object from inheriting permissions.
-    Turn off the option for inheriting permissions, and then try removing <span id="cant_remove_username_3" class = "cant_remove_username"></span>  again.
+    <strong>⚠️ Cannot Remove User</strong><br/><br/>
+    <span id="cant_remove_username_1" class = "cant_remove_username"></span> cannot be removed because this file is currently inheriting 
+    permissions from its parent folder.<br/><br/>
+    To remove <span id="cant_remove_username_2" class = "cant_remove_username"></span>, you must prevent this object from inheriting permissions.<br/><br/>
+    Open the Advanced Settings to turn off the option for inheriting permissions, and then try removing <span id="cant_remove_username_3" class = "cant_remove_username"></span> again.
 </div>`)
 
 // Make a confirmation "are you sure you want to remove?" dialog
@@ -97,6 +112,9 @@ let are_you_sure_dialog = define_new_dialog('are_you_sure_dialog', "Are you sure
 
                 // Remove all the permissions:
                 remove_all_perms_for_user(path_to_file[filepath], all_users[username]) 
+
+                // Force refresh of permissions dialog to update user list:
+                perm_dialog.attr('filepath', filepath)
 
                 // Update the UI to show that it's been removed:
                 file_permission_users.find('.ui-selected').remove()
@@ -238,7 +256,8 @@ function open_permission_entry(file_path) {
 }
 
 // populate and open the "advanced" dialog for a given file
-function open_advanced_dialog(file_path) {
+// from_cant_remove_error: optional flag indicating dialog was opened from "can't remove" error path
+function open_advanced_dialog(file_path, from_cant_remove_error = false) {
     let file_obj = path_to_file[file_path]
 
     // set file path in UI:
@@ -246,6 +265,13 @@ function open_advanced_dialog(file_path) {
     $('#adv_owner_filepath').text(file_path);
     $('#adv_effective_filepath').text(file_path);
     $('#advdialog').attr('filepath', file_path);
+    
+    // Show/hide warning banner based on whether opened from "can't remove" error
+    if (from_cant_remove_error) {
+        $('#adv_perm_warning_banner').show();
+    } else {
+        $('#adv_perm_warning_banner').hide();
+    }
 
     // clear dynamic content:
     $('#adv_perm_table tr:gt(0)').remove()
@@ -334,6 +360,14 @@ for(let p of Object.values(permissions)) {
     $('#adv_effective_effective_list').append(row)
 }
 
+// Add warning banner to Advanced dialog (initially hidden)
+// Place it right after the object name div so it doesn't interfere with other content
+$('#adv_perm_object_name').after(`
+    <div id="adv_perm_warning_banner" class="adv-warning-banner" style="display:none;">
+        ⚠️ To remove inherited users, uncheck "Include inheritable permissions from this object's parent" below.
+    </div>
+`);
+
 // Advanced dialog
 $( "#advtabs" ).tabs({
     heightStyle: 'fill'
@@ -341,7 +375,7 @@ $( "#advtabs" ).tabs({
 let adv_contents = $(`#advdialog`).dialog({
     position: { my: "top", at: "top", of: $('#html-loc') },
     width: 700,
-    height: 450,
+    height: 550,
     modal: true,
     autoOpen: false,
     appendTo: "#html-loc",
@@ -735,3 +769,4 @@ $('#survey-form').submit(function(){
     $('#survey-dialog').dialog( "close" );
     event.preventDefault();
 })
+

@@ -118,3 +118,13 @@ input.groupcheckbox[ptype="deny"]:checked {
 .no-close .ui-dialog-titlebar-close {
     display: none;
 }
+
+.adv-warning-banner {
+    background-color: #f39c12;
+    color: white;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    font-weight: 600;
+    border-left: 4px solid #e67e22;
+}
