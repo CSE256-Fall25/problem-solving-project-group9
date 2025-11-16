@@ -246,11 +246,12 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
     };
 
     // For each permissions group, create a row:
-    for(let g of which_groups){
+    for(let i = 0; i < which_groups.length; i++){
+        let g = which_groups[i];
         // Use a friendlier display name for some groups (without changing the underlying group key)
         let display_name = g;
         if (g === 'Full_control') {
-            display_name = 'Complete Access';
+            display_name = '<strong>Complete Access</strong>';
         }
 
         // Description used for the inline info icon tooltip
@@ -268,6 +269,14 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
             </td>`)
         }
         group_table.append(row)
+        
+        // Add solid line separator after Full_control with equal spacing above and below
+        if(g === 'Full_control' && i < which_groups.length - 1) {
+            let separator_row = $(`<tr id="${id_prefix}_separator_after_full_control" class="perm_group_separator">
+                <td colspan="3" style="border-top: 2px solid #ccc; padding: 2px 0 1px 0;"></td>
+            </tr>`)
+            group_table.append(separator_row)
+        }
     }  
 
 

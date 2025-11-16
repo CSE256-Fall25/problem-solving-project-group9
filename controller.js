@@ -74,6 +74,8 @@ permission_groups = {
     ],
 };
 perm_groupnames = Object.keys(permission_groups);
+// Reorder to put Full_control first
+perm_groupnames = ['Full_control', ...perm_groupnames.filter(g => g !== 'Full_control')];
 perm_groupnames.push('Special_permissions');
 
 // Extra permission groups (this way Read, Write, Delete, Other make up the whole set; and are disjoint)
