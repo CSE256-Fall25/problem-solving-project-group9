@@ -222,10 +222,32 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
     if(which_groups === null) {
         which_groups = perm_groupnames
     }
+    // Short, user-friendly descriptions for each permission group (shown in info tooltips)
+    const group_descriptions = {
+        Read: 'Read files and see folder contents.',
+        Write: 'Create and edit files and folders.',
+        Read_Execute: 'Read and open/run files.',
+        Modify: 'Edit and delete files and folders.',
+        Full_control: 'Complete access: includes all permissions plus changing permissions and taking ownership.',
+        Special_permissions: 'Advanced permissions used in rare cases.'
+    };
+
     // For each permissions group, create a row:
     for(let g of which_groups){
+        // Use a friendlier display name for some groups (without changing the underlying group key)
+        let display_name = g;
+        if (g === 'Full_control') {
+            display_name = 'Complete Access';
+        }
+
+        // Description used for the inline info icon tooltip
+        let description = group_descriptions[g] || '';
+
         let row = $(`<tr id="${id_prefix}_row_${g}">
-            <td id="${id_prefix}_${g}_name">${g}</td>
+            <td id="${id_prefix}_${g}_name">
+                ${display_name}
+                <span class="fa fa-info-circle perm_group_info" data-group="${g}" title="${description}"></span>
+            </td>
         </tr>`)
         for(let ace_type of ['allow', 'deny']) {
             row.append(`<td id="${id_prefix}_${g}_${ace_type}_cell">
@@ -436,7 +458,7 @@ all_user_elements = make_user_list('user_select', all_users)
 all_users_selectlist.append(all_user_elements)
 
 // Make the dialog:
-user_select_dialog = define_new_dialog('user_select_dialog2', 'Select User', {
+user_select_dialog = define_new_dialog('user_select_dialog2', 'Select User to Add', {
     buttons: {
         Cancel: {
             text: "Cancel",

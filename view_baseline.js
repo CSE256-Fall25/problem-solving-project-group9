@@ -7,8 +7,8 @@ show_starter_dialogs = false // set this to "false" to disable the survey and 3-
 // Make permissions dialog:
 perm_dialog = define_new_dialog('permdialog', title='Permissions', options = {
     // The following are standard jquery-ui options. See https://jqueryui.com/dialog/
-    height: 500,
-    width: 400,
+    height: 600,
+    width: 700,
     buttons: {
         OK:{
             text: "OK",
@@ -44,11 +44,11 @@ file_permission_users = define_single_select_list('permdialog_file_user_list', f
     grouped_permissions.attr('username', selected_user)
 })
 file_permission_users.css({
-    'height':'80px',
+    'height':'140px',
 })
 
 // Make button to add a new user to the list:
-perm_add_user_select = define_new_user_select_field('perm_add_user', 'Add...', on_user_change = function(selected_user){
+perm_add_user_select = define_new_user_select_field('perm_add_user', 'Add new user', on_user_change = function(selected_user){
     // console.log("add...")
     let filepath = perm_dialog.attr('filepath')
     if(selected_user && (selected_user.length > 0) && (selected_user in all_users)) { // sanity check that a user is actually selected (and exists)
@@ -120,7 +120,20 @@ let are_you_sure_dialog = define_new_dialog('are_you_sure_dialog', "Are you sure
 are_you_sure_dialog.text('Do you want to remove permissions for this user?')
 
 // Make actual "remove" button:
-perm_remove_user_button  = $('<button id="perm_remove_user" class="ui-button ui-widget ui-corner-all">Remove</button>')
+perm_remove_user_button  = $('<button id="perm_remove_user" class="ui-button ui-widget ui-corner-all" title="Please select a user first">Remove user</button>')
+perm_remove_user_button.prop('disabled', true)
+
+// Enable/disable Remove user button and update tooltip when selection changes:
+define_attribute_observer(file_permission_users, 'selected_item', function(selected_user_name){
+    if(selected_user_name && selected_user_name.length > 0) {
+        perm_remove_user_button.prop('disabled', false)
+        perm_remove_user_button.attr('title', 'Remove selected user')
+    } else {
+        perm_remove_user_button.prop('disabled', true)
+        perm_remove_user_button.attr('title', 'Please select a user first')
+    }
+})
+
 perm_remove_user_button.click(function(){
     // Get the current user and filename we are working with:
     let selected_username = file_permission_users.attr('selected_item')
@@ -146,12 +159,21 @@ perm_remove_user_button.click(function(){
 
 // --- Append all the elements to the permissions dialog in the right order: --- 
 perm_dialog.append(obj_name_div)
-perm_dialog.append($('<div id="permissions_user_title">Group or user names:</div>'))
+perm_dialog.append($('<div id="permissions_user_title"><strong>Select employee to change permissions for:</strong><br/></div>'))
 perm_dialog.append(file_permission_users)
 perm_dialog.append(perm_add_user_select)
 perm_add_user_select.append(perm_remove_user_button) // Cheating a bit again - add the remove button the the 'add user select' div, just so it shows up on the same line.
 perm_dialog.append(grouped_permissions)
 perm_dialog.append(advanced_expl_div)
+
+// Enable jQuery UI tooltips for permission-group info icons, using their title text
+$(document).tooltip({
+    track: true,
+    items: '.perm_group_info',
+    content: function() {
+        return $(this).attr('title');
+    }
+})
 
 // --- Additional logic for reloading contents when needed: ---
 //Define an observer which will propagate perm_dialog's filepath attribute to all the relevant elements, whenever it changes:

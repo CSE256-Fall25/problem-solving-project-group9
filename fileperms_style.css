@@ -18,6 +18,62 @@
     right: 0;
 }
 
+#perm_remove_user {
+    background-color: #d9534f;
+    border-color: #d43f3a;
+    color: #ffffff;
+}
+
+#perm_remove_user[disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.permbutton .perm-label {
+    margin-left: 6px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+#permissions_user_title {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+/* Balance spacing between user list, add/remove buttons, and permissions table */
+#permdialog_file_user_list {
+    margin-top: 4px;
+    margin-bottom: 2px; /* slightly tighter gap before add/remove buttons */
+}
+
+#perm_add_user_line {
+    margin-top: 0;
+    margin-bottom: 14px; /* larger space between buttons and permissions table */
+}
+
+#permdialog_grouped_permissions {
+    margin-top: 6px;
+}
+
+/* Color selected Allow/Deny checkboxes for clarity */
+input.perm_checkbox[ptype="allow"]:checked,
+input.groupcheckbox[ptype="allow"]:checked {
+    accent-color: #28a745; /* green */
+}
+
+input.perm_checkbox[ptype="deny"]:checked,
+input.groupcheckbox[ptype="deny"]:checked {
+    accent-color: #d9534f; /* red */
+}
+
+/* Inline info icons for permission groups */
+.perm_group_info {
+    margin-left: 6px;
+    color: #888;
+    cursor: help;
+    font-size: 12px;
+}
+
 
 #mturk-top-banner-drop-down-content {
     position: absolute;
