@@ -33,9 +33,9 @@ function define_attribute_observer(watched_elem_selector, watched_attribute, on_
 // and also adds any attributes you pass along
 function make_user_elem(id_prefix, uname, user_attributes=null) {
     // Add a special class to the "students" group so its icon and label can be styled consistently
-    // But don't apply styling for let_ta_modify scenario (revert to original black unbolded format)
+    // But don't apply styling for let_ta_modify or lost_inheritance scenarios (revert to original black unbolded format)
     let current_scenario = $('#scenario_context').data('tag');
-    let group_students_class = (uname === 'students' && current_scenario !== 'let_ta_modify') ? 'group-students-label' : '';
+    let group_students_class = (uname === 'students' && current_scenario !== 'let_ta_modify' && current_scenario !== 'lost_inheritance') ? 'group-students-label' : '';
 
     user_elem = $(`<div class="ui-widget-content" id="${id_prefix}_${uname}" name="${uname}">
         <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'} ${group_students_class}"></span> 
@@ -638,6 +638,15 @@ function open_user_select_dialog(to_populate_id) {
     // TODO: reset selected user?..
 
     user_select_dialog.attr('to_populate', to_populate_id)
+    
+    // Adjust width for lost_inheritance scenario
+    let current_scenario = $('#scenario_context').data('tag');
+    if (current_scenario === 'lost_inheritance') {
+        user_select_dialog.dialog('option', 'width', 450);
+    } else {
+        user_select_dialog.dialog('option', 'width', 350);
+    }
+    
     user_select_dialog.dialog('open')
 }
 
