@@ -1,45 +1,45 @@
 // ---- Define your dialogs and panels here ----
-let effective_permissions_panel = define_new_effective_permissions(
-    'effective_permissions_panel',
-    true
-);
-$('#sidepanel').append(effective_permissions_panel);
+// let effective_permissions_panel = define_new_effective_permissions(
+//     'effective_permissions_panel',
+//     true
+// );
+// $('#sidepanel').append(effective_permissions_panel);
 
-let user_selector = define_new_user_select_field(
-    'user_select',
-    'Select the user',
-    function(selected_user) {
-        $('#effective_permissions_panel').attr('username', selected_user);
-    }
-);
-$('#sidepanel').append(user_selector);
+// let user_selector = define_new_user_select_field(
+//     'user_select',
+//     'Select the user',
+//     function(selected_user) {
+//         $('#effective_permissions_panel').attr('username', selected_user);
+//     }
+// );
+// $('#sidepanel').append(user_selector);
 
-let new_dialog = define_new_dialog('info_dialog', 'Information/Details');
-$('.perm_info').click(
-    function() {
-        let name = $('#effective-permissions-panel').attr('username');
-        let path = $('#effective-permissions-panel').attr('filepath');
-        let permission = $(this).attr('permission_name');
-        console.log('Username:', name, 'Filepath:', path, 'Permission Type:', permission);
+// let new_dialog = define_new_dialog('info_dialog', 'Information/Details');
+// $('.perm_info').click(
+//     function() {
+//         let name = $('#effective-permissions-panel').attr('username');
+//         let path = $('#effective-permissions-panel').attr('filepath');
+//         let permission = $(this).attr('permission_name');
+//         console.log('Username:', name, 'Filepath:', path, 'Permission Type:', permission);
 
-        if (!name || !path) {
-            new_dialog.html('Select a user and file first.').dialog('Open');
-            return;
-        }
+//         if (!name || !path) {
+//             new_dialog.html('Select a user and file first.').dialog('Open');
+//             return;
+//         }
   
-        let file_obj = path_to_file[path];
-        let user_obj = all_users[name];
-        console.log('File Object:', file_obj, 'User Object:', user_obj);
+//         let file_obj = path_to_file[path];
+//         let user_obj = all_users[name];
+//         console.log('File Object:', file_obj, 'User Object:', user_obj);
   
-        let explanation_obj = allow_user_action(file_obj, user_obj, permission, true);
-        console.log('Explanation Object:', explanation_obj);
+//         let explanation_obj = allow_user_action(file_obj, user_obj, permission, true);
+//         console.log('Explanation Object:', explanation_obj);
   
-        let text = get_explanation_text(explanation_obj);
-        console.log('Explanation Text:', text);
+//         let text = get_explanation_text(explanation_obj);
+//         console.log('Explanation Text:', text);
 
-        new_dialog.html(text).dialog('Open');
-    }
-);
+//         new_dialog.html(text).dialog('Open');
+//     }
+// );
 
 // ---- Display file structure ----
 
@@ -66,11 +66,49 @@ function make_file_element(file_obj) {
         // append children, if any:
         if( file_hash in parent_to_children) {
             let container_elem = $("<div class='folder_contents'></div>")
-            folder_elem.append(container_elem)
-            for(child_file of parent_to_children[file_hash]) {
-                let child_elem = make_file_element(child_file)
-                container_elem.append(child_elem)
+            
+            // Check if this folder has any files (not just folders)
+            let has_files = false
+            for(let child_file of parent_to_children[file_hash]) {
+                if (!child_file.is_folder) {
+                    has_files = true
+                    break
+                }
             }
+            
+            // Only create table with headers if there are files
+            if (has_files) {
+                let file_table = $(`
+                    <table class="folder_file_table" width="100%">
+                        <thead>
+                            <tr>
+                                <th style="text-align: left; padding: 8px; background-color: #f8f9fa; font-weight: 600;">File Name</th>
+                                <th style="text-align: center; padding: 8px; background-color: #f8f9fa; font-weight: 600; width: 150px;">Inheritance Status</th>
+                                <th style="text-align: right; padding: 8px; background-color: #f8f9fa; font-weight: 600; width: 200px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="folder_file_table_body"></tbody>
+                    </table>
+                `)
+                container_elem.append(file_table)
+                
+                for(child_file of parent_to_children[file_hash]) {
+                    let child_elem = make_file_element(child_file)
+                    // If it's a file, add it to the table; if it's a folder, add it normally
+                    if (!child_file.is_folder) {
+                        file_table.find('.folder_file_table_body').append(child_elem)
+                    } else {
+                        container_elem.append(child_elem)
+                    }
+                }
+            } else {
+                // No files, just add folders directly without table structure
+                for(child_file of parent_to_children[file_hash]) {
+                    let child_elem = make_file_element(child_file)
+                    container_elem.append(child_elem)
+                }
+            }
+            folder_elem.append(container_elem)
         }
         return folder_elem
     }
@@ -95,7 +133,39 @@ for(let root_file of root_files) {
     $( "#filestructure" ).append( file_elem);    
 }
 
-
+// Add legend/key panel below file structure
+let inheritance_legend = $(`
+    <div id="inheritance_legend" style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border: 1px solid #ddd; border-radius: 4px; font-family: Arial, sans-serif;">
+        <h3 style="margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: bold; font-family: Arial, sans-serif;">Inheritance Status Indicators:</h3>
+        <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif;">
+            <tr>
+                <td style="padding: 8px; text-align: center; width: 60px; font-family: Arial, sans-serif;">
+                    <span style="color: #28a745; font-weight: bold; font-size: 18px;">✓↓</span>
+                </td>
+                <td style="padding: 8px; font-family: Arial, sans-serif;">
+                    <strong style="font-family: Arial, sans-serif;">Inheriting</strong> - File is inheriting permissions from its parent folder
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; text-align: center; width: 60px; font-family: Arial, sans-serif;">
+                    <span style="color: #dc3545; font-weight: bold; font-size: 18px;">⚠</span>
+                </td>
+                <td style="padding: 8px; font-family: Arial, sans-serif;">
+                    <strong style="font-family: Arial, sans-serif;">Warning</strong> - File is not inheriting permissions and has no explicit permissions. The file may be inaccessible.
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 8px; text-align: center; width: 60px; font-family: Arial, sans-serif;">
+                    <span style="color: #6c757d; font-weight: bold; font-size: 18px;">✗</span>
+                </td>
+                <td style="padding: 8px; font-family: Arial, sans-serif;">
+                    <strong style="font-family: Arial, sans-serif;">Not Inheriting</strong> - File is using explicit permissions instead of inheriting from parent
+                </td>
+            </tr>
+        </table>
+    </div>
+`)
+$("#filestructure").after(inheritance_legend)
 
 // make folder hierarchy into an accordion structure
 $('.folder').accordion({

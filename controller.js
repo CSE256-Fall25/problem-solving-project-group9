@@ -56,7 +56,7 @@ permission_groups = {
         permissions.DELETE,
         permissions.DELETE_SUB,
     ],
-    Full_control: [
+    Full_Control: [
         permissions.LIST,
         permissions.READ_ATTR,
         permissions.READ_EXTENDED_ATTR,
@@ -210,8 +210,22 @@ function get_file_users(file_obj, users = {}, following_inheritance = false) {
 // recursively follow inheritance if appropriate; following_inheritance flag indicates that these are already inherited permissions.
 function get_aces_file_user(file_obj, username, following_inheritance = false) {
     let aces = [];
+    // Get the actual user object (string or group) from all_users
+    let user_obj = null;
+    if (username in all_users) {
+        user_obj = all_users[username];
+    } else {
+        // Username not found in all_users, can't match any ACEs
+        if (file_obj.using_permission_inheritance && file_obj.parent !== null) {
+            return get_aces_file_user(file_obj.parent, username, true);
+        } else {
+            return aces;
+        }
+    }
+    
     for (let ace of file_obj.acl) {
-        if (get_user_name(ace.who) === username) {
+        // Use ace_applies to check if this ACE applies to the user (handles both direct user and group membership)
+        if (ace_applies(user_obj, ace)) {
             aces.push({
                 ace: ace,
                 inherited: following_inheritance,
@@ -278,17 +292,23 @@ function get_grouped_permissions(file_obj, username) {
             // if any of the permission listed in that group are not listed in the total permissions, then we will not check the checkbox for that group.
             let should_check = true;
             let has_inherited = false;
+            let has_explicit = false;
+
             for (let perm of permission_groups[groupname]) {
                 if (!total_permissions[ace_type][perm]) {
                     should_check = false;
-                } else if (total_permissions[ace_type][perm].inherited) {
-                    has_inherited = true;
+                } else {
+                    if (total_permissions[ace_type][perm].inherited) {
+                        has_inherited = true;
+                    } else {
+                        has_explicit = true;
+                    }
                 }
             }
             if (should_check) {
                 grouped_permissions[ace_type][groupname] = {
                     set: true,
-                    inherited: has_inherited,
+                    inherited: has_inherited && !has_explicit,
                 };
                 // if we've checked the box, mark each permission in this group as "used" for some permission group - if there are any "unused" permissions, then we will check "special permissions"
                 for (let perm of permission_groups[groupname]) {
@@ -311,7 +331,7 @@ function get_grouped_permissions(file_obj, username) {
             }
         }
         if (need_special) {
-            grouped_permissions[ace_type].Special_permissions = {
+            grouped_permissions[ace_type].Special_Permissions = {
                 set: true,
                 inherited: special_inherited,
             };

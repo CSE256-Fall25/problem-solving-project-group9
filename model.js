@@ -201,7 +201,13 @@ function emitState(purpose = "Permission state changed"){
 // add each permission in "permissions" (all of is_allow type) for the given file and user
 function add_permissons(file, user, permissions, is_allow) {
   for(p of permissions) {
-    file.acl.push(make_ace(user, p, is_allow))
+    // Check if an ACE with the same user, permission, and allow/deny type already exists
+    let exists = file.acl.some(ace => 
+      ace.who === user && ace.permission === p && ace.is_allow_ace === is_allow
+    )
+    if (!exists) {
+      file.acl.push(make_ace(user, p, is_allow))
+    }
   }
   emitState()
 }
