@@ -267,7 +267,7 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
         let row = $(`<tr id="${id_prefix}_row_${g}">
             <td id="${id_prefix}_${g}_name">
                 ${display_name}
-                <span class="fa fa-info-circle perm_group_info" data-group="${g}" title="${description}"></span>
+                <span class="fa fa-info-circle perm_group_info" data-group="${g}" data-description="${description.replace(/"/g, '&quot;')}" style="cursor: pointer; margin-left: 6px; color: #888;" title="Click for more information"></span>
             </td>
         </tr>`)
         for(let ace_type of ['allow', 'deny']) {

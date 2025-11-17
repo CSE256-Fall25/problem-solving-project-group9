@@ -181,17 +181,58 @@ perm_dialog.append($('<div id="permissions_user_title"><strong>Select employee t
 perm_dialog.append(file_permission_users)
 perm_dialog.append(perm_add_user_select)
 perm_add_user_select.append(perm_remove_user_button) // Cheating a bit again - add the remove button the the 'add user select' div, just so it shows up on the same line.
+
+// Add inheritance explanation box between buttons and permissions table
+let inheritance_explanation_box = $('<div id="permdialog_inheritance_explanation" style="padding: 10px; margin: 10px 0; font-size: 0.9em; color: #666; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;"><span class="fa fa-info-circle" style="margin-right: 6px;"></span><strong>Note:</strong> If checkboxes are greyed out, they cannot be changed because the permissions are inherited from the parent folder. To modify inherited permissions, go to <strong>Advanced</strong> and uncheck include inheritable permissions.</div>')
+perm_dialog.append(inheritance_explanation_box)
+
 perm_dialog.append(grouped_permissions)
 perm_dialog.append(advanced_expl_div)
 
-// Enable jQuery UI tooltips for permission-group info icons, using their title text
-$(document).tooltip({
-    track: true,
-    items: '.perm_group_info',
-    content: function() {
-        return $(this).attr('title');
+// Create a dialog for showing permission group information
+let perm_group_info_dialog = define_new_dialog('perm_group_info_dialog', 'Permission Information', {
+    width: 400,
+    height: 'auto',
+    modal: false,
+    buttons: {
+        Close: {
+            text: "Close",
+            click: function() {
+                $(this).dialog('close');
+            }
+        }
     }
-})
+});
+
+// Handle clicks on permission group info icons
+$(document).on('click', '.perm_group_info', function() {
+    let description = $(this).attr('data-description') || 'No description available.';
+    let groupName = $(this).attr('data-group') || 'Permission';
+    
+    // Format the group name for display
+    let displayName = groupName;
+    if (groupName === 'Full_control') {
+        displayName = 'Complete Access';
+    } else {
+        displayName = groupName.replace(/_/g, ' ');
+    }
+    
+    perm_group_info_dialog.html(`
+        <div style="padding: 10px;">
+            <h3 style="margin-top: 0; margin-bottom: 10px;">${displayName}</h3>
+            <p style="margin: 0; line-height: 1.5;">${description}</p>
+        </div>
+    `);
+    
+    // Position the dialog near the clicked icon and open it
+    perm_group_info_dialog.dialog('option', 'position', {
+        my: "left top",
+        at: "right+10 top",
+        of: $(this)
+    });
+    
+    perm_group_info_dialog.dialog('open');
+});
 
 // --- Additional logic for reloading contents when needed: ---
 //Define an observer which will propagate perm_dialog's filepath attribute to all the relevant elements, whenever it changes:
@@ -266,11 +307,18 @@ function open_advanced_dialog(file_path, from_cant_remove_error = false) {
     $('#adv_effective_filepath').text(file_path);
     $('#advdialog').attr('filepath', file_path);
     
-    // Show/hide warning banner based on whether opened from "can't remove" error
-    if (from_cant_remove_error) {
+    // Show/hide warning banner based on scenario or whether opened from "can't remove" error
+    let current_scenario = $('#scenario_context').data('tag');
+    let should_show_warning = from_cant_remove_error || 
+                              current_scenario === 'remove_user_with_inheritance' || 
+                              current_scenario === 'remove_inherited_permission';
+    
+    if (should_show_warning) {
         $('#adv_perm_warning_banner').show();
         // Store flag for use in inheritance dialog
-        $('#advdialog').data('from_cant_remove_error', true);
+        if (from_cant_remove_error) {
+            $('#advdialog').data('from_cant_remove_error', true);
+        }
     } else {
         $('#adv_perm_warning_banner').hide();
         $('#advdialog').data('from_cant_remove_error', false);
@@ -367,7 +415,7 @@ for(let p of Object.values(permissions)) {
 // Place it right after the object name div so it doesn't interfere with other content
 $('#adv_perm_object_name').after(`
     <div id="adv_perm_warning_banner" class="adv-warning-banner" style="display:none;">
-        ⚠️ To remove inherited users, uncheck "Include inheritable permissions from this object's parent" below.
+        ⚠️ To remove inheritance, uncheck "Include inheritable permissions from this object's parent" below.
     </div>
 `);
 
@@ -438,18 +486,29 @@ $('#adv_perm_inheritance').change(function(){
                 </div>
             `;
         } else {
-            // Default messaging
+            // Default messaging - styled to match remove_user_with_inheritance
             dialog_content = `
-                Warning: if you proceed, inheritable permissions will no longer propagate to this object.<br/><br/>
-                - Click <strong>Add</strong> to convert and add inherited parent permissions as explicit permissions on this object<br/>
-                - Click <strong>Remove</strong> to remove inherited parent permissions from this object<br/>
-                - Click <strong>Cancel</strong> if you do not want to modify inheritance settings at this time.
+                <div style="margin-bottom: 12px;">
+                    <strong>⚠️ Warning: Inheritable permissions will no longer propagate to this object.</strong>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    If you proceed, this object will stop inheriting permissions from its parent folder. You can choose to convert the inherited permissions to explicit permissions, or remove them entirely.
+                </div>
+                <div style="background-color: #e7f3ff; border-left: 4px solid #0066cc; padding: 10px; margin: 12px 0;">
+                    <strong style="color: #0066cc;">✓ Recommended: Click "Add"</strong><br/>
+                    This converts inherited permissions to explicit permissions on this object, preserving the current access settings.
+                </div>
+                <div style="color: #666; font-size: 0.9em; margin-top: 12px;">
+                    <strong>Other options:</strong><br/>
+                    • <strong>Remove</strong>: Removes inherited permissions without converting (may restrict access)<br/>
+                    • <strong>Cancel</strong>: Keep inheritance settings as they are
+                </div>
             `;
         }
         
         $(`<div id="add_remove_cancel" title="Security">${dialog_content}</div>`).dialog({ // TODO: don't create this dialog on the fly
             modal: true,
-            width: is_remove_user_scenario && from_cant_remove ? 500 : 400,
+            width: 500,
             appendTo: "#html-loc",
             position: { my: "top", at: "top", of: $('#html-loc') },
             buttons: {
@@ -637,6 +696,12 @@ $('#adv_perm_edit').click(function(){
     let filepath = $('#advdialog').attr('filepath')
     open_permission_entry(filepath)
 })
+
+// Add inheritance explanation box to permission entry dialog (between Change button and table)
+if ($('#perm_entry_inheritance_explanation_box').length === 0) {
+    let perm_entry_explanation_box = $('<div id="perm_entry_inheritance_explanation_box" style="padding: 10px; margin: 10px 0; font-size: 0.9em; color: #666; background-color: #f9f9f9; border: 1px solid #ddd; border-radius: 4px;"><span class="fa fa-info-circle" style="margin-right: 6px;"></span><strong>Note:</strong> If checkboxes are greyed out, they cannot be changed because the permissions are inherited from the parent folder. To modify inherited permissions, go to <strong>Advanced</strong> and uncheck include inheritable permissions.</div>')
+    $('#perm_entry_change_user').after(perm_entry_explanation_box)
+}
 
 $('#perm_entry_change_user').click(function(){
     open_user_select('perm_entry_username') 
