@@ -327,7 +327,26 @@ define_attribute_observer(perm_dialog, 'filepath', function(){
     grouped_permissions.attr('username', '') // since we are reloading the user list, reset the username in permission checkboxes
     //replace previous user list with the one we just generated:
     file_permission_users.empty()
-    file_permission_users.append(file_user_list)
+    
+    // If user list is empty and inheritance is disabled, show helpful message
+    if (file_user_list.length === 0 && !file_obj.using_permission_inheritance && file_obj.acl.length === 0) {
+        let empty_list_message = $(`
+            <div style="padding: 15px; text-align: center; color: #666; background-color: #f9f9f9; border: 1px dashed #ccc; border-radius: 4px; margin: 10px 0;">
+                <div style="font-size: 1.1em; margin-bottom: 8px;">
+                    <strong>No users found</strong>
+                </div>
+                <div style="font-size: 0.95em; line-height: 1.5;">
+                    This file has no explicit permissions and inheritance is disabled.<br/>
+                    To see users with permissions, go to <strong>Advanced</strong> and check<br/>
+                    <strong>"Include inheritable permissions from this object's parent"</strong>
+                </div>
+            </div>
+        `)
+        file_permission_users.append(empty_list_message)
+    } else {
+        file_permission_users.append(file_user_list)
+    }
+    
     update_remove_button_state() // update remove button state after reloading list
 })
 

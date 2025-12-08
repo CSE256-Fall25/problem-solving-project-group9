@@ -42,7 +42,7 @@ function make_user_elem(id_prefix, uname, user_attributes=null, include_checkbox
     user_elem = $(`<div class="ui-widget-content user-list-item" id="${id_prefix}_${uname}" name="${uname}">
         ${checkbox_html}
         <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'} ${group_students_class}"></span> 
-        <span id="${id_prefix}_${uname}_text" class="${group_students_class}">${uname}</span>
+        <span id="${id_prefix}_${uname}_text" class="${group_students_class}" style="margin-left: 6px;">${uname}</span>
     </div>`)
 
     // Scenario-specific badge: indicate that teaching_assistant is a member of the "students" group

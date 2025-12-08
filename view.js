@@ -1,18 +1,4 @@
-// ---- Define your dialogs and panels here ----
-let effective_permissions_panel = define_new_effective_permissions(
-    'effective_permissions_panel',
-    true
-);
-$('#sidepanel').append(effective_permissions_panel);
 
-let user_selector = define_new_user_select_field(
-    'user_select',
-    'Select the user',
-    function(selected_user) {
-        $('#effective_permissions_panel').attr('username', selected_user);
-    }
-);
-$('#sidepanel').append(user_selector);
 
 let new_dialog = define_new_dialog('info_dialog', 'Information/Details');
 $('.perm_info').click(
@@ -69,6 +55,26 @@ function make_file_element(file_obj) {
         if( file_hash in parent_to_children) {
             let container_elem = $("<div class='folder_contents'></div>")
             folder_elem.append(container_elem)
+            
+            // Check if this folder contains any files (not just folders)
+            let hasFiles = false
+            for(let child_file of parent_to_children[file_hash]) {
+                if (!child_file.is_folder) {
+                    hasFiles = true
+                    break
+                }
+            }
+            
+            // Add header before files if there are any files in this folder
+            if (hasFiles) {
+                let file_header = $(`<div class="file-structure-header">
+                    <span class="file-header-name">File Name</span>
+                    <span class="file-header-inheritance">Inheritance Status</span>
+                    <span class="file-header-permissions">Change Permissions</span>
+                </div>`)
+                container_elem.append(file_header)
+            }
+            
             for(child_file of parent_to_children[file_hash]) {
                 let child_elem = make_file_element(child_file)
                 container_elem.append(child_elem)
@@ -77,8 +83,19 @@ function make_file_element(file_obj) {
         return folder_elem
     }
     else {
+        // Determine inheritance status and display
+        let inheritance_status = file_obj.using_permission_inheritance
+        let inheritance_display = inheritance_status 
+            ? '<span class="oi oi-check inheritance-icon inheritance-enabled"></span><span class="inheritance-label inheritance-enabled-label">Inheriting</span>' 
+            : '<span class="oi oi-x inheritance-icon inheritance-disabled"></span><span class="inheritance-label inheritance-disabled-label">Not inheriting</span>'
+        
         return $(`<div class='file'  id="${file_hash}_div">
-            <span class="oi oi-file" id="${file_hash}_icon"></span> ${file_obj.filename}
+            <span class="file-name-container">
+                <span class="oi oi-file" id="${file_hash}_icon"></span> ${file_obj.filename}
+            </span>
+            <span class="file-inheritance-status">
+                ${inheritance_display}
+            </span>
             <button
                 class="ui-button ui-widget ui-corner-all permbutton permbutton-file"
                 path="${file_hash}"
@@ -94,6 +111,24 @@ function make_file_element(file_obj) {
     }
 }
 
+// Check if there are any root-level files (not folders) and add header if needed
+let hasRootFiles = false
+for(let root_file of root_files) {
+    if (!root_file.is_folder) {
+        hasRootFiles = true
+        break
+    }
+}
+
+if (hasRootFiles) {
+    let file_header = $(`<div class="file-structure-header">
+        <span class="file-header-name">File Name</span>
+        <span class="file-header-inheritance">Inheritance Status</span>
+        <span class="file-header-permissions">Change Permissions</span>
+    </div>`)
+    $( "#filestructure" ).append( file_header)
+}
+
 for(let root_file of root_files) {
     let file_elem = make_file_element(root_file)
     $( "#filestructure" ).append( file_elem);    
@@ -104,6 +139,22 @@ $('.folder').accordion({
     collapsible: true,
     heightStyle: 'content'
 }) // TODO: start collapsed and check whether read permission exists before expanding?
+
+// Add legend explaining file structure
+let file_structure_legend = $(`<div class="file-structure-legend">
+    <div class="legend-title"><strong>Legend:</strong></div>
+    <div class="legend-item">
+        <span class="oi oi-check inheritance-icon inheritance-enabled"></span>
+        <span class="inheritance-label inheritance-enabled-label">Inheriting</span>
+        <span class="legend-description">- Permissions are passed from the parent folder</span>
+    </div>
+    <div class="legend-item">
+        <span class="oi oi-x inheritance-icon inheritance-disabled"></span>
+        <span class="inheritance-label inheritance-disabled-label">Not inheriting</span>
+        <span class="legend-description">- File has its own explicit permissions (not inherited from parent)</span>
+    </div>
+</div>`)
+$( "#filestructure" ).append( file_structure_legend)
 
 
 // -- Connect File Structure lock buttons to the permission dialog --
