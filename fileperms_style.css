@@ -33,6 +33,19 @@
     margin-left: 6px;
     font-weight: 600;
     font-size: 14px;
+    vertical-align: middle;
+}
+
+/* Ensure consistent button padding and alignment */
+.permbutton {
+    padding: 6px 12px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.permbutton .oi {
+    font-size: 14px;
+    vertical-align: middle;
 }
 
 #permissions_user_title {
@@ -48,11 +61,142 @@
 
 #perm_add_user_line {
     margin-top: 0;
-    margin-bottom: 14px; /* larger space between buttons and permissions table */
+    margin-bottom: 10px; /* reduced space between buttons and permissions table */
 }
 
 #permdialog_grouped_permissions {
-    margin-top: 6px;
+    margin-top: 4px;
+}
+
+/* Permissions table styling - prettier with padding and shading */
+.permissions-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.permissions-table-header {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+}
+
+.permissions-table-header th {
+    padding: 8px 12px;
+    font-weight: 600;
+    text-align: left;
+    color: #333;
+}
+
+.permissions-table-header-perm {
+    text-align: left !important;
+    padding-left: 12px;
+}
+
+.permissions-table-header-checkbox {
+    text-align: center !important;
+    width: 100px;
+}
+
+.permissions-table-row {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+.permissions-table-row:nth-child(even) {
+    background-color: #fafafa;
+}
+
+.permissions-table-row:hover {
+    background-color: #f0f7ff;
+}
+
+.permissions-table-perm-name {
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.permissions-table-checkbox-cell {
+    padding: 8px 12px;
+    text-align: center;
+    vertical-align: middle;
+    width: 100px;
+}
+
+.permissions-table-checkbox-cell .groupcheckbox {
+    margin: 0 auto;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+/* Warning rows styling */
+.permissions-table .perm-warning-text {
+    padding: 8px 12px;
+    background-color: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+/* Separator row styling */
+.permissions-table .perm_group_separator td {
+    background-color: #f5f5f5;
+    padding: 4px 0;
+}
+
+/* Advanced Settings permission entries table styling */
+#adv_perm_table_container {
+    position: relative;
+}
+
+#adv_perm_table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    background-color: #ffffff;
+}
+
+#adv_perm_header {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+}
+
+#adv_perm_header th {
+    position: -webkit-sticky; /* Safari */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 8px 12px;
+    font-weight: 600;
+    text-align: left;
+    color: #333;
+    background-color: #f5f5f5 !important;
+    border-bottom: 2px solid #ddd;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+#adv_perm_table tr {
+    background-color: #ffffff;
+    transition: background-color 0.2s ease;
+}
+
+#adv_perm_table tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+#adv_perm_table tr:hover {
+    background-color: #f0f7ff;
+}
+
+#adv_perm_table td {
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid #eee;
 }
 
 /* Color selected Allow/Deny checkboxes for clarity */
@@ -85,9 +229,8 @@ input.groupcheckbox[ptype="deny"]:checked {
     margin-left: 6px;
     padding: 1px 6px;
     border-radius: 10px;
-    background-color: #337ab7;
+    background-color: #a1d3ff;
     font-size: 11px;
-    color: #ffffff;
 }
 
 .group-students-label {
@@ -127,4 +270,128 @@ input.groupcheckbox[ptype="deny"]:checked {
     border-radius: 4px;
     font-weight: 600;
     border-left: 4px solid #e67e22;
+}
+
+/* Visual distinction between folder and file permission buttons */
+.permbutton-folder {
+    background-color: #0066cc !important;
+    border-color: #0052a3 !important;
+    color: white !important;
+    font-weight: 600;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.permbutton-folder:hover,
+.permbutton-folder:focus {
+    background-color: #0052a3 !important;
+    border-color: #003d7a !important;
+    color: white !important;
+}
+
+.permbutton-folder:active {
+    background-color: #003d7a !important;
+    border-color: #002d5c !important;
+}
+
+.permbutton-file {
+    background-color: #6c757d !important;
+    border-color: #5a6268 !important;
+    color: white !important;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.permbutton-file:hover,
+.permbutton-file:focus {
+    background-color: #5a6268 !important;
+    border-color: #484f54 !important;
+    color: white !important;
+}
+
+.permbutton-file:active {
+    background-color: #484f54 !important;
+    border-color: #343a40 !important;
+}
+
+/* Breadcrumb/path display in permission dialogs - prominent and sticky at the top */
+.perm-dialog-breadcrumb {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    font-size: 1em;
+    color: #333;
+    margin: 0;
+    margin-bottom: 12px;
+    margin-top: 0;
+    padding: 12px 15px;
+    background-color: #e7f3ff;
+    border: 2px solid #0066cc;
+    border-left: 5px solid #0066cc;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 102, 204, 0.15);
+    font-weight: 500;
+}
+
+/* Ensure breadcrumb is first element in Advanced dialog tabs */
+#adv_permissions_tab .perm-dialog-breadcrumb,
+#adv_owner_tab .perm-dialog-breadcrumb,
+#adv_effective_tab .perm-dialog-breadcrumb {
+    margin-top: 0;
+}
+
+.perm-dialog-breadcrumb strong {
+    color: #0066cc;
+    font-weight: 700;
+    font-size: 1.05em;
+}
+
+.perm-dialog-breadcrumb #permdialog_breadcrumb_path,
+.perm-dialog-breadcrumb #adv_perm_filepath,
+.perm-dialog-breadcrumb #adv_owner_filepath,
+.perm-dialog-breadcrumb #adv_effective_filepath {
+    color: #004499;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+    font-size: 1em;
+}
+
+/* Checkbox list styling */
+.checkbox-list {
+    padding: 4px;
+}
+
+.user-list-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    margin: 2px 0;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+}
+
+.user-list-item:hover {
+    background-color: #f0f0f0;
+}
+
+.user-list-item .user-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+}
+
+.user-list-item .user-checkbox:checked + .oi {
+    color: #0066cc;
+}
+
+.user-list-item input[type="checkbox"]:checked ~ span {
+    color: #0066cc;
+    font-weight: 600;
+}
+
+/* Ensure dialog content area allows sticky positioning */
+#permdialog {
+    position: relative;
+    overflow-y: auto;
+    max-height: 800px;
 }

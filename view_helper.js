@@ -31,13 +31,16 @@ function define_attribute_observer(watched_elem_selector, watched_attribute, on_
 // Make an element for a user - this element would usually go into a selectable list of users. 
 // The element automatically creates an icon which varies based on whether it's a singular user or a group, 
 // and also adds any attributes you pass along
-function make_user_elem(id_prefix, uname, user_attributes=null) {
+function make_user_elem(id_prefix, uname, user_attributes=null, include_checkbox=false) {
     // Add a special class to the "students" group so its icon and label can be styled consistently
     // But don't apply styling for let_ta_modify or lost_inheritance scenarios (revert to original black unbolded format)
     let current_scenario = $('#scenario_context').data('tag');
     let group_students_class = (uname === 'students' && current_scenario !== 'let_ta_modify' && current_scenario !== 'lost_inheritance') ? 'group-students-label' : '';
 
-    user_elem = $(`<div class="ui-widget-content" id="${id_prefix}_${uname}" name="${uname}">
+    let checkbox_html = include_checkbox ? `<input type="checkbox" class="user-checkbox" id="${id_prefix}_${uname}_checkbox" name="${uname}" style="margin-right: 8px;"></input>` : '';
+
+    user_elem = $(`<div class="ui-widget-content user-list-item" id="${id_prefix}_${uname}" name="${uname}">
+        ${checkbox_html}
         <span id="${id_prefix}_${uname}_icon" class="oi ${is_user(all_users[uname])?'oi-person':'oi-people'} ${group_students_class}"></span> 
         <span id="${id_prefix}_${uname}_text" class="${group_students_class}">${uname}</span>
     </div>`)
@@ -60,11 +63,11 @@ function make_user_elem(id_prefix, uname, user_attributes=null) {
 
 // make a list of users, suitable for inserting into a select list, given a map of user name to some arbitrary info.
 // optionally, adds all the properties listed for a given user as attributes for that user's element.
-function make_user_list(id_prefix, usermap, add_attributes = false) {
+function make_user_list(id_prefix, usermap, add_attributes = false, include_checkbox = false) {
     let u_elements = []
     for(uname in usermap){
         // make user element; if add_attributes is true, pass along usermap[uname] for attribute creation.
-        user_elem = make_user_elem(id_prefix, uname, add_attributes ? usermap[uname] : null )
+        user_elem = make_user_elem(id_prefix, uname, add_attributes ? usermap[uname] : null, include_checkbox)
         u_elements.push(user_elem)
     }
     return u_elements
@@ -215,16 +218,83 @@ function define_new_effective_permissions(id_prefix, add_info_col = false, which
 }
 
 
+// Define a checkbox-based list for selecting users/groups (single selection only)
+function define_checkbox_list(id_prefix, on_selection_change = function(selected_items){}) {
+    let checkbox_list = $(`<div id="${id_prefix}" class="checkbox-list" style="overflow-y:scroll"></div>`)
+    
+    // Track selected items (only one at a time)
+    let selected_items = []
+    
+    // Function to update selected items
+    let update_selection = function() {
+        selected_items = []
+        let checked_box = checkbox_list.find('.user-checkbox:checked')
+        if (checked_box.length > 0) {
+            selected_items.push(checked_box.attr('name'))
+        }
+        checkbox_list.attr('selected_items', selected_items.join(','))
+        if (selected_items.length > 0) {
+            checkbox_list.attr('selected_item', selected_items[0]) // for backward compatibility
+        } else {
+            checkbox_list.attr('selected_item', '')
+        }
+        on_selection_change(selected_items)
+    }
+    
+    // Handle checkbox changes - enforce single selection
+    checkbox_list.on('change', '.user-checkbox', function() {
+        let this_checkbox = $(this)
+        if (this_checkbox.prop('checked')) {
+            // Uncheck all other checkboxes
+            checkbox_list.find('.user-checkbox').not(this_checkbox).prop('checked', false)
+        }
+        update_selection()
+        emitter.dispatchEvent(new CustomEvent('userEvent', { 
+            detail: new ClickEntry(
+                ActionEnum.CLICK, 
+                (event.clientX + window.pageXOffset), 
+                (event.clientY + window.pageYOffset), 
+                `${checkbox_list.attr('id')} checkbox: ${$(this).attr('name')} ${$(this).prop('checked') ? 'checked' : 'unchecked'}`,
+                new Date().getTime()) 
+        }))
+    })
+    
+    // Allow clicking on the row to toggle checkbox (single selection)
+    checkbox_list.on('click', '.user-list-item', function(e) {
+        if (e.target.type !== 'checkbox') {
+            let checkbox = $(this).find('.user-checkbox')
+            let was_checked = checkbox.prop('checked')
+            // If clicking to check, uncheck all others first
+            if (!was_checked) {
+                checkbox_list.find('.user-checkbox').not(checkbox).prop('checked', false)
+            }
+            checkbox.prop('checked', !was_checked)
+            checkbox.trigger('change')
+        }
+    })
+    
+    checkbox_list.get_selected_items = function() {
+        return selected_items
+    }
+    
+    checkbox_list.clear_selection = function() {
+        checkbox_list.find('.user-checkbox').prop('checked', false)
+        update_selection()
+    }
+    
+    return checkbox_list
+}
+
 // define an element which will display *grouped* permissions for a given file and user, and allow for changing them by checking/unchecking the checkboxes.
 function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
     // Set up table and header:
     let group_table = $(`
-    <table id="${id_prefix}" class="ui-widget-content" width="100%">
-        <tr id="${id_prefix}_header">
-            <th id="${id_prefix}_header_p" width="99%">Permissions for <span id="${id_prefix}_header_username"></span>
+    <table id="${id_prefix}" class="permissions-table ui-widget-content" width="100%">
+        <tr id="${id_prefix}_header" class="permissions-table-header">
+            <th id="${id_prefix}_header_p" class="permissions-table-header-perm">Permissions for <span id="${id_prefix}_header_username"></span>
             </th>
-            <th id="${id_prefix}_header_allow">Allow</th>
-            <th id="${id_prefix}_header_deny">Deny</th>
+            <th id="${id_prefix}_header_allow" class="permissions-table-header-checkbox">Allow</th>
+            <th id="${id_prefix}_header_deny" class="permissions-table-header-checkbox">Deny</th>
         </tr>
         <tr id="${id_prefix}_warning_row_teaching_assistant" style="display:none;">
             <td colspan="3" class="perm-warning-text">
@@ -264,14 +334,14 @@ function define_grouped_permission_checkboxes(id_prefix, which_groups = null) {
         // Description used for the inline info icon tooltip
         let description = group_descriptions[g] || '';
 
-        let row = $(`<tr id="${id_prefix}_row_${g}">
-            <td id="${id_prefix}_${g}_name">
+        let row = $(`<tr id="${id_prefix}_row_${g}" class="permissions-table-row">
+            <td id="${id_prefix}_${g}_name" class="permissions-table-perm-name">
                 ${display_name}
                 <span class="fa fa-info-circle perm_group_info" data-group="${g}" data-description="${description.replace(/"/g, '&quot;')}" style="cursor: pointer; margin-left: 6px; color: #888;" title="Click for more information"></span>
             </td>
         </tr>`)
         for(let ace_type of ['allow', 'deny']) {
-            row.append(`<td id="${id_prefix}_${g}_${ace_type}_cell">
+            row.append(`<td id="${id_prefix}_${g}_${ace_type}_cell" class="permissions-table-checkbox-cell">
                 <input type="checkbox" id="${id_prefix}_${g}_${ace_type}_checkbox" ptype="${ace_type}" class="groupcheckbox" group="${g}" ></input>
             </td>`)
         }
@@ -596,11 +666,18 @@ function define_file_permission_groups_list(id_prefix){
 
 // -- a general-purpose User Select dialog which can be opened when we need to select a user. -- 
 
-// Make a selectable list which will store all of the users, and automatically keep track of which one is selected.
-all_users_selectlist = define_single_select_list('user_select_list')
+// Make a checkbox list which will store all of the users, and automatically keep track of which ones are selected.
+all_users_selectlist = define_checkbox_list('user_select_list', function(selected_items) {
+    // Store the first selected item for backward compatibility (or all items)
+    if (selected_items.length > 0) {
+        all_users_selectlist.attr('selected_item', selected_items[0])
+    } else {
+        all_users_selectlist.attr('selected_item', '')
+    }
+})
 
-// Make the elements which reperesent all users, and add them to the selectable
-all_user_elements = make_user_list('user_select', all_users)
+// Make the elements which represent all users, and add them to the checkbox list
+all_user_elements = make_user_list('user_select', all_users, false, true)
 all_users_selectlist.append(all_user_elements)
 
 // Make the dialog:
@@ -620,9 +697,8 @@ user_select_dialog = define_new_dialog('user_select_dialog2', 'Select User to Ad
                 // When "OK" is clicked, we want to populate some other element with the selected user name 
                 //(to pass along the selection information to whoever opened this dialog)
                 let to_populate_id = $(this).attr('to_populate') // which field do we need to populate?
-                // console.log("populate id " + to_populate_id);
-                let selected_value = all_users_selectlist.attr('selected_item') // what is the user name that was selected?
-                // console.log("selected item " + selected_value);
+                let selected_items = all_users_selectlist.get_selected_items()
+                let selected_value = selected_items.length > 0 ? selected_items[0] : '' // use first selected for backward compatibility
                 $(`#${to_populate_id}`).attr('selected_user', selected_value) // populate the element with the id
                 $( this ).dialog( "close" );
             }

@@ -52,13 +52,15 @@ function make_file_element(file_obj) {
             <h3 id="${file_hash}_header">
                 <span class="oi oi-folder" id="${file_hash}_icon"></span> ${file_obj.filename} 
                 <button
-                    class="ui-button ui-widget ui-corner-all permbutton"
+                    class="ui-button ui-widget ui-corner-all permbutton permbutton-folder"
                     path="${file_hash}"
                     id="${file_hash}_permbutton"
-                    aria-label="Change permissions"
-                    title="Change permissions">
+                    aria-label="Change folder permissions"
+                    title="Change folder permissions"
+                    style="margin-left: 10px;"
+                >
                     <span class="oi oi-lock-unlocked" id="${file_hash}_permicon"></span>
-                    <span class="perm-label">Change permissions</span>
+                    <span class="perm-label">Folder Permissions</span>
                 </button>
             </h3>
         </div>`)
@@ -78,13 +80,15 @@ function make_file_element(file_obj) {
         return $(`<div class='file'  id="${file_hash}_div">
             <span class="oi oi-file" id="${file_hash}_icon"></span> ${file_obj.filename}
             <button
-                class="ui-button ui-widget ui-corner-all permbutton"
+                class="ui-button ui-widget ui-corner-all permbutton permbutton-file"
                 path="${file_hash}"
                 id="${file_hash}_permbutton"
-                aria-label="Change permissions"
-                title="Change permissions">
+                aria-label="Change file permissions"
+                title="Change file permissions"
+                style="margin-left: 10px;"
+            >
                 <span class="oi oi-lock-unlocked" id="${file_hash}_permicon"></span>
-                <span class="perm-label">Change permissions</span>
+                <span class="perm-label">File Permissions</span>
             </button>
         </div>`)
     }
@@ -94,8 +98,6 @@ for(let root_file of root_files) {
     let file_elem = make_file_element(root_file)
     $( "#filestructure" ).append( file_elem);    
 }
-
-
 
 // make folder hierarchy into an accordion structure
 $('.folder').accordion({
